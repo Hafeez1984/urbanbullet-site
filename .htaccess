@@ -1,6 +1,7 @@
 # BEGIN passenger config
 PassengerEnabled on
 PassengerAppEnv production
+PassengerNode /opt/alt/alt-nodejs22/root/usr/bin/node
 PassengerAppRoot /home/u320819004/domains/urbanbullet.in/public_html
 PassengerStartupFile server.js
 PassengerAppType node
