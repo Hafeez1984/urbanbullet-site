@@ -80,6 +80,32 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
+    const isStatic = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
+    if (isStatic) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      if (email.toLowerCase() === 'alex@streetrevolution.com') {
+        setUser(DEMO_USER);
+        localStorage.setItem('ub_user', JSON.stringify(DEMO_USER));
+      } else if (email.trim() && password.length >= 6) {
+        const displayName = email.split('@')[0];
+        const newUser: User = {
+          firstName: displayName.charAt(0).toUpperCase() + displayName.slice(1),
+          lastName: "User",
+          displayName: displayName.charAt(0).toUpperCase() + displayName.slice(1),
+          email: email,
+          memberSince: new Date().getFullYear().toString(),
+          avatarInitials: displayName.substring(0, 2).toUpperCase(),
+        };
+        setUser(newUser);
+        localStorage.setItem('ub_user', JSON.stringify(newUser));
+      } else {
+        setIsLoading(false);
+        return { success: false, error: "Invalid credentials. Try alex@streetrevolution.com with any password." };
+      }
+      setIsLoading(false);
+      return { success: true };
+    }
+
     try {
       const result = await signIn('credentials', {
         email,
@@ -118,6 +144,32 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (email: string, password: string, firstName: string, lastName: string) => {
     setIsLoading(true);
+    const isStatic = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
+    if (isStatic) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!email.includes('@')) {
+        setIsLoading(false);
+        return { success: false, error: "Please enter a valid email address." };
+      }
+      if (password.length < 6) {
+        setIsLoading(false);
+        return { success: false, error: "Password must be at least 6 characters." };
+      }
+      const initials = (firstName.substring(0, 1) + lastName.substring(0, 1)).toUpperCase();
+      const newUser: User = {
+        firstName,
+        lastName,
+        displayName: `${firstName} ${lastName}`,
+        email,
+        memberSince: new Date().getFullYear().toString(),
+        avatarInitials: initials || "SR",
+      };
+      setUser(newUser);
+      localStorage.setItem('ub_user', JSON.stringify(newUser));
+      setIsLoading(false);
+      return { success: true };
+    }
+
     try {
       const result = await signIn('credentials', {
         email,
@@ -156,7 +208,10 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setUser(null);
     localStorage.removeItem('ub_user');
-    await nextAuthSignOut({ redirect: true, callbackUrl: '/account' });
+    const isStatic = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
+    if (!isStatic) {
+      await nextAuthSignOut({ redirect: true, callbackUrl: '/account' });
+    }
   };
 
   const updateUser = (updatedUser: Partial<User>) => {

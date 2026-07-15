@@ -1,19 +1,25 @@
-# BEGIN passenger config
-PassengerEnabled on
-PassengerAppEnv production
-PassengerNode /opt/alt/alt-nodejs22/root/usr/bin/node
-PassengerAppRoot /home/u320819004/domains/urbanbullet.in/public_html
-PassengerStartupFile app.js
-PassengerAppType node
-# END passenger config
-
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
-    
-    # Send all requests to the Passenger handler (app.js)
-    RewriteRule ^app\.js$ - [L]
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ app.js/$1 [QSA,L]
+
+    # Prevent loop if the request is already rewritten to /out/
+    RewriteCond %{ENV:REDIRECT_STATUS} 200
+    RewriteRule ^ - [L]
+
+    # 1. Redirect empty root request to out/index.html
+    RewriteRule ^$ out/index.html [L]
+
+    # 2. Resolve extensionless files (e.g., /account -> out/account.html)
+    RewriteCond %{DOCUMENT_ROOT}/out/$1.html -f
+    RewriteRule ^([^/.]+)$ out/$1.html [L]
+
+    # 3. Check if file or directory exists in /out and serve it (e.g., assets, css, js)
+    RewriteCond %{DOCUMENT_ROOT}/out/$1 -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}/out/$1 -d
+    RewriteRule ^(.*)$ out/$1 [L]
+
+    # 4. Fallback to out/404.html if the requested resource doesn't exist
+    RewriteCond %{DOCUMENT_ROOT}/out/$1 !-f
+    RewriteCond %{DOCUMENT_ROOT}/out/$1 !-d
+    RewriteRule ^(.*)$ out/404.html [L]
 </IfModule>
