@@ -1,19 +1,15 @@
-# BEGIN passenger config
-PassengerEnabled on
-PassengerAppEnv production
-PassengerNode /opt/alt/alt-nodejs22/root/usr/bin/node
-PassengerAppRoot /home/u320819004/domains/urbanbullet.in/public_html
-PassengerStartupFile server.js
-PassengerAppType node
-# END passenger config
-
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
     
-    # Send all requests to the Passenger handler (server.js)
-    RewriteRule ^server\.js$ - [L]
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ server.js/$1 [QSA,L]
+    # 1. Reverse proxy the empty root request to the Node.js server
+    RewriteRule ^$ http://127.0.0.1:3081/ [P,L]
+    
+    # 2. Bypass rewrite for existing physical files (e.g. assets, static files)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    
+    # 3. Reverse proxy all other requests to the Node.js process running on port 3081
+    RewriteRule ^(.*)$ http://127.0.0.1:3081/$1 [P,L]
 </IfModule>
