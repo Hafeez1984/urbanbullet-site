@@ -40,6 +40,23 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    const isStatic = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
+    if (isStatic) {
+      const storedUser = localStorage.getItem('ub_user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error("Failed to parse stored user", e);
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+      return;
+    }
+
     if (status === 'loading') {
       setIsLoading(true);
       return;

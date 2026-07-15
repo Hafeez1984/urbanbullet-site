@@ -2,6 +2,8 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+console.log("[NextAuth Route] Init. NEXTAUTH_URL:", process.env.NEXTAUTH_URL, "Secret exists:", !!process.env.NEXTAUTH_SECRET);
+
 const handler = NextAuth({
   providers: [
     GoogleProvider({
