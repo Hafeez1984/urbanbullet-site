@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { SessionProvider, useSession, signIn, signOut as nextAuthSignOut } from 'next-auth/react';
 
 export interface User {
   firstName: string;
@@ -33,87 +34,129 @@ const DEMO_USER: User = {
   avatarInitials: "AR",
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { data: session, status } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Check localStorage for active session on load
-    const storedUser = localStorage.getItem('ub_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse stored user", e);
+    if (status === 'loading') {
+      setIsLoading(true);
+      return;
+    }
+
+    if (session?.user) {
+      const name = session.user.name || 'Google User';
+      const email = session.user.email || '';
+      const nameParts = name.split(' ');
+      const firstName = nameParts[0] || 'Google';
+      const lastName = nameParts.slice(1).join(' ') || 'User';
+      const initials = (firstName.substring(0, 1) + lastName.substring(0, 1)).toUpperCase();
+
+      setUser({
+        firstName,
+        lastName,
+        displayName: name,
+        email,
+        phone: '',
+        memberSince: new Date().getFullYear().toString(),
+        avatarInitials: initials || 'GU',
+      });
+    } else {
+      const storedUser = localStorage.getItem('ub_user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error("Failed to parse stored user", e);
+          setUser(null);
+        }
+      } else {
+        setUser(null);
       }
     }
     setIsLoading(false);
-  }, []);
+  }, [session, status]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
 
-    // Mock verification
-    if (email.toLowerCase() === 'alex@streetrevolution.com') {
-      setUser(DEMO_USER);
-      localStorage.setItem('ub_user', JSON.stringify(DEMO_USER));
+      if (result?.error) {
+        setIsLoading(false);
+        return { success: false, error: result.error || 'Invalid credentials' };
+      }
+
+      if (email.toLowerCase() === 'alex@streetrevolution.com') {
+        setUser(DEMO_USER);
+        localStorage.setItem('ub_user', JSON.stringify(DEMO_USER));
+      } else {
+        const displayName = email.split('@')[0];
+        const newUser: User = {
+          firstName: displayName.charAt(0).toUpperCase() + displayName.slice(1),
+          lastName: "User",
+          displayName: displayName.charAt(0).toUpperCase() + displayName.slice(1),
+          email: email,
+          memberSince: new Date().getFullYear().toString(),
+          avatarInitials: displayName.substring(0, 2).toUpperCase(),
+        };
+        setUser(newUser);
+        localStorage.setItem('ub_user', JSON.stringify(newUser));
+      }
       setIsLoading(false);
       return { success: true };
-    } else if (email.trim() && password.length >= 6) {
-      // Allow login for other users with any password >= 6 chars for testing convenience
-      const displayName = email.split('@')[0];
-      const newUser: User = {
-        firstName: displayName.charAt(0).toUpperCase() + displayName.slice(1),
-        lastName: "User",
-        displayName: displayName.charAt(0).toUpperCase() + displayName.slice(1),
-        email: email,
-        memberSince: new Date().getFullYear().toString(),
-        avatarInitials: displayName.substring(0, 2).toUpperCase(),
-      };
-      setUser(newUser);
-      localStorage.setItem('ub_user', JSON.stringify(newUser));
+    } catch (err) {
       setIsLoading(false);
-      return { success: true };
-    } else {
-      setIsLoading(false);
-      return { success: false, error: "Invalid credentials. Try alex@streetrevolution.com with any password." };
+      return { success: false, error: 'An unexpected authentication error occurred.' };
     }
   };
 
   const signup = async (email: string, password: string, firstName: string, lastName: string) => {
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        firstName,
+        lastName,
+        isSignup: 'true',
+        redirect: false,
+      });
 
-    if (!email.includes('@')) {
+      if (result?.error) {
+        setIsLoading(false);
+        return { success: false, error: result.error || 'Registration failed' };
+      }
+
+      const initials = (firstName.substring(0, 1) + lastName.substring(0, 1)).toUpperCase();
+      const newUser: User = {
+        firstName,
+        lastName,
+        displayName: `${firstName} ${lastName}`,
+        email,
+        memberSince: new Date().getFullYear().toString(),
+        avatarInitials: initials || "SR",
+      };
+
+      setUser(newUser);
+      localStorage.setItem('ub_user', JSON.stringify(newUser));
       setIsLoading(false);
-      return { success: false, error: "Please enter a valid email address." };
-    }
-    if (password.length < 6) {
+      return { success: true };
+    } catch (err) {
       setIsLoading(false);
-      return { success: false, error: "Password must be at least 6 characters." };
+      return { success: false, error: 'An unexpected registration error occurred.' };
     }
-
-    const initials = (firstName.substring(0, 1) + lastName.substring(0, 1)).toUpperCase();
-    const newUser: User = {
-      firstName,
-      lastName,
-      displayName: `${firstName} ${lastName}`,
-      email,
-      memberSince: new Date().getFullYear().toString(),
-      avatarInitials: initials || "SR",
-    };
-
-    setUser(newUser);
-    localStorage.setItem('ub_user', JSON.stringify(newUser));
-    setIsLoading(false);
-    return { success: true };
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     localStorage.removeItem('ub_user');
+    await nextAuthSignOut({ redirect: true, callbackUrl: '/account' });
   };
 
   const updateUser = (updatedUser: Partial<User>) => {
@@ -128,6 +171,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={{ user, isLoading, login, signup, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
+  );
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <SessionProvider>
+      <AuthContextInternal>
+        {children}
+      </AuthContextInternal>
+    </SessionProvider>
   );
 };
 

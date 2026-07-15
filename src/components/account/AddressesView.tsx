@@ -89,21 +89,27 @@ export default function AddressesView({
                     Edit
                   </button>
                 </div>
-                <address>
-                  <strong style={{ color: 'var(--text)' }}>{address.name}</strong>
-                  <br />
-                  {address.line1}
-                  <br />
-                  {address.line2 && (
-                    <>
-                      {address.line2}
-                      <br />
-                    </>
-                  )}
-                  {address.city}, {address.state} {address.postcode}
-                  <br />
-                  {address.country}
-                </address>
+                {address.line1 ? (
+                  <address>
+                    <strong style={{ color: 'var(--text)' }}>{address.name}</strong>
+                    <br />
+                    {address.line1}
+                    <br />
+                    {address.line2 && (
+                      <>
+                        {address.line2}
+                        <br />
+                      </>
+                    )}
+                    {address.city}, {address.state} {address.postcode}
+                    <br />
+                    {address.country}
+                  </address>
+                ) : (
+                  <div className="empty-address-placeholder" style={{ padding: '12px 0', color: 'var(--muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                    No address registered. Click Edit to configure.
+                  </div>
+                )}
               </div>
             );
           })}

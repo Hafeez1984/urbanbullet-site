@@ -35,7 +35,13 @@ export default function DashboardHome({
   icons,
 }: DashboardHomeProps) {
   const { showNotification } = useNotification();
-  const totalSpend = '$767.50';
+  const totalSpend = React.useMemo(() => {
+    const calculatedSpend = orders.reduce((sum, order) => {
+      const val = parseFloat(order.total.replace(/[^0-9.]/g, ''));
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+    return `$${calculatedSpend.toFixed(2)}`;
+  }, [orders]);
   const latestOrder = orders[0] || { status: 'N/A' };
 
   return (

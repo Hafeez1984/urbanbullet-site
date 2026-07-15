@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
+import { signIn } from 'next-auth/react';
 
 export const AuthGate: React.FC = () => {
   const { login, signup } = useAuth();
@@ -316,6 +317,72 @@ export const AuthGate: React.FC = () => {
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
+
+        .google-signin-container {
+          margin-top: 10px;
+          margin-bottom: 8px;
+        }
+
+        .google-btn {
+          width: 100%;
+          height: 50px;
+          background-color: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 15px;
+          color: #1e293b;
+          font-family: var(--font-body);
+          font-size: 0.95rem;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          cursor: pointer;
+          transition: background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+        }
+
+        .google-btn:hover {
+          background-color: #f1f5f9;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+        }
+
+        .google-btn:focus {
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.4), 0 0 12px rgba(6, 182, 212, 0.2);
+        }
+
+        .google-icon {
+          width: 20px;
+          height: 20px;
+        }
+
+        .auth-divider {
+          display: flex;
+          align-items: center;
+          text-align: center;
+          color: var(--muted);
+          font-size: 0.75rem;
+          font-weight: 800;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          margin: 22px 0;
+        }
+
+        .auth-divider::before,
+        .auth-divider::after {
+          content: '';
+          flex: 1;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .auth-divider:not(:empty)::before {
+          margin-right: 1.2em;
+        }
+
+        .auth-divider:not(:empty)::after {
+          margin-left: 1.2em;
+        }
       `}} />
 
       <div className="auth-card">
@@ -347,6 +414,24 @@ export const AuthGate: React.FC = () => {
             Sign Up
           </button>
         </div>
+
+        <div className="google-signin-container">
+          <button
+            type="button"
+            onClick={() => signIn('google', { callbackUrl: '/account' })}
+            className="google-btn"
+          >
+            <svg viewBox="0 0 48 48" className="google-icon" width="20" height="20" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.5 24c0-1.65-.15-3.22-.42-4.75H24v9h12.75c-.55 2.86-2.17 5.29-4.6 6.92l7.15 5.54C43.5 36.58 46.5 30.86 46.5 24z"/>
+              <path fill="#FBBC05" d="M10.54 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.98-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.15-5.54c-2.2 1.47-5.02 2.35-8.74 2.35-6.26 0-11.57-4.22-13.46-10.19l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            <span>Sign in with Google</span>
+          </button>
+        </div>
+
+        <div className="auth-divider">or</div>
 
         {errorMsg && <div className="auth-error">{errorMsg}</div>}
 

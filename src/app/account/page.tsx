@@ -1,13 +1,11 @@
 'use client';
 
 import React from 'react';
-// import { useAuth } from '@/context/AuthContext';
-// import { AuthGate } from '@/components/account/AuthGate';
+import { useAuth } from '@/context/AuthContext';
+import { AuthGate } from '@/components/account/AuthGate';
 import MyAccountDashboard from '@/components/account/MyAccountDashboard';
 
 export default function AccountPage() {
-  // Temporarily bypassed auth gate for UI staging review
-  /*
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -24,7 +22,6 @@ export default function AccountPage() {
   if (!user) {
     return <AuthGate />;
   }
-  */
 
   return <MyAccountDashboard />;
 }

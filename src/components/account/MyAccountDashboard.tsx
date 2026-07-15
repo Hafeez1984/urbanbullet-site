@@ -155,11 +155,28 @@ export interface MyAccountDashboardProps {
 
 export default function MyAccountDashboard({
   customer: propCustomer,
-  orders = demoOrders,
-  addresses = demoAddresses,
+  orders: propOrders,
+  addresses: propAddresses,
 }: MyAccountDashboardProps) {
   const { user, logout, updateUser } = useAuth();
   const currentCustomer = propCustomer || user || demoCustomer;
+
+  const isDemo = currentCustomer?.email?.toLowerCase() === 'alex@streetrevolution.com';
+
+  const orders = useMemo(() => {
+    if (propOrders) return propOrders;
+    if (isDemo) return demoOrders;
+    return [];
+  }, [propOrders, isDemo]);
+
+  const addresses = useMemo(() => {
+    if (propAddresses) return propAddresses;
+    if (isDemo) return demoAddresses;
+    return {
+      billing: { name: '', line1: '', line2: '', city: '', state: '', postcode: '', country: '' },
+      shipping: { name: '', line1: '', line2: '', city: '', state: '', postcode: '', country: '' }
+    };
+  }, [propAddresses, isDemo]);
 
   const [active, setActive] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(false);
