@@ -22,6 +22,7 @@ export default function RootLayout({
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
           precedence="default"
         />
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body className="gradient-bg min-h-screen text-white antialiased">
         <AuthProvider>

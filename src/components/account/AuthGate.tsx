@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import { signIn } from 'next-auth/react';
@@ -11,6 +11,68 @@ export const AuthGate: React.FC = () => {
   
   const isStatic = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
   
+  useEffect(() => {
+    if (isStatic && typeof window !== 'undefined') {
+      const checkGsi = setInterval(() => {
+        if ((window as any).google?.accounts?.id) {
+          clearInterval(checkGsi);
+          const google = (window as any).google;
+          
+          google.accounts.id.initialize({
+            client_id: "555849725616-cfsnu89kf426p6c2fj476vhfqg1o5i7k.apps.googleusercontent.com",
+            callback: (response: any) => {
+              try {
+                const jwt = response.credential;
+                // Decode the client-side Google ID Token (JWT)
+                const base64Url = jwt.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(
+                  atob(base64)
+                    .split('')
+                    .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                    .join('')
+                );
+                const payload = JSON.parse(jsonPayload);
+                
+                const firstName = payload.given_name || payload.name?.split(' ')[0] || "Google";
+                const lastName = payload.family_name || payload.name?.split(' ')[1] || "User";
+                const mockGoogleUser = {
+                  firstName: firstName,
+                  lastName: lastName,
+                  displayName: payload.name || `${firstName} ${lastName}`,
+                  email: payload.email,
+                  memberSince: new Date().getFullYear().toString(),
+                  avatarInitials: (firstName.substring(0, 1) + lastName.substring(0, 1)).toUpperCase(),
+                };
+                
+                localStorage.setItem('ub_user', JSON.stringify(mockGoogleUser));
+                showNotification(`Signed in as ${payload.email}!`);
+                window.location.reload();
+              } catch (e) {
+                console.error("JWT Decode error", e);
+                setErrorMsg('Failed to process Google login response.');
+              }
+            }
+          });
+
+          // Render the official Google Sign-In button
+          const btnDiv = document.getElementById("google-signin-btn-div");
+          if (btnDiv) {
+            google.accounts.id.renderButton(btnDiv, {
+              theme: "filled_blue",
+              size: "large",
+              text: "signin_with",
+              shape: "rectangular",
+              width: btnDiv.clientWidth || 300,
+            });
+          }
+        }
+      }, 500);
+      
+      return () => clearInterval(checkGsi);
+    }
+  }, [isStatic]);
+
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -444,21 +506,27 @@ export const AuthGate: React.FC = () => {
           </button>
         </div>
 
-        <div className="google-signin-container">
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            className="google-btn"
-          >
-            <svg viewBox="0 0 48 48" className="google-icon" width="20" height="20" aria-hidden="true">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-              <path fill="#4285F4" d="M46.5 24c0-1.65-.15-3.22-.42-4.75H24v9h12.75c-.55 2.86-2.17 5.29-4.6 6.92l7.15 5.54C43.5 36.58 46.5 30.86 46.5 24z"/>
-              <path fill="#FBBC05" d="M10.54 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.98-6.19z"/>
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.15-5.54c-2.2 1.47-5.02 2.35-8.74 2.35-6.26 0-11.57-4.22-13.46-10.19l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-            </svg>
-            <span>Sign in with Google</span>
-          </button>
-        </div>
+        {isStatic ? (
+          <div className="google-signin-container" style={{ display: 'flex', justifyContent: 'center', minHeight: '50px' }}>
+            <div id="google-signin-btn-div" style={{ width: '100%', minHeight: '40px' }}></div>
+          </div>
+        ) : (
+          <div className="google-signin-container">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="google-btn"
+            >
+              <svg viewBox="0 0 48 48" className="google-icon" width="20" height="20" aria-hidden="true">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.5 24c0-1.65-.15-3.22-.42-4.75H24v9h12.75c-.55 2.86-2.17 5.29-4.6 6.92l7.15 5.54C43.5 36.58 46.5 30.86 46.5 24z"/>
+                <path fill="#FBBC05" d="M10.54 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.98-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.15-5.54c-2.2 1.47-5.02 2.35-8.74 2.35-6.26 0-11.57-4.22-13.46-10.19l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              </svg>
+              <span>Sign in with Google</span>
+            </button>
+          </div>
+        )}
         <div className="auth-divider">or</div>
 
         {errorMsg && <div className="auth-error">{errorMsg}</div>}
