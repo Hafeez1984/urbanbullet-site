@@ -40,7 +40,10 @@ export default function DashboardHome({
       const val = parseFloat(order.total.replace(/[^0-9.]/g, ''));
       return sum + (isNaN(val) ? 0 : val);
     }, 0);
-    return `$${calculatedSpend.toFixed(2)}`;
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).format(calculatedSpend);
   }, [orders]);
   const latestOrder = orders[0] || { status: 'N/A' };
 

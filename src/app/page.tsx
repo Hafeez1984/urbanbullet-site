@@ -351,8 +351,8 @@ export default function Home() {
                 <span className="text-[10px] uppercase tracking-widest text-cyan-400 font-bold orbitron">LIMITED RELEASE</span>
                 <span className="text-sm font-bold text-white uppercase tracking-wide">CYBER TECH HOODIE</span>
                 <div className="flex items-center justify-between gap-6 mt-1 border-t border-zinc-800 pt-1.5">
-                  <span className="text-lg font-black text-[#06b6d4] orbitron">$89.99</span>
-                  <span className="text-[10px] text-gray-500 line-through">$129.99</span>
+                  <span className="text-lg font-black text-[#06b6d4] orbitron">₹89.99</span>
+                  <span className="text-[10px] text-gray-500 line-through">₹129.99</span>
                 </div>
               </div>
             </div>

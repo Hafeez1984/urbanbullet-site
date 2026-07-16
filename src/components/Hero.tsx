@@ -70,7 +70,7 @@ export const Hero: React.FC = () => {
             {/* Floating Price Tag */}
             <div className="absolute -bottom-6 -left-6 bg-black border-2 border-cyan-500 rounded-2xl p-6 glow-cyan">
               <div className="text-sm text-gray-400 uppercase tracking-wider mb-1">Starting at</div>
-              <div className="text-4xl font-black neon-cyan orbitron">$49.99</div>
+              <div className="text-4xl font-black neon-cyan orbitron">₹49.99</div>
             </div>
           </div>
         </div>

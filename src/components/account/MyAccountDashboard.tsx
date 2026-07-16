@@ -120,10 +120,10 @@ export const demoCustomer: User = {
 };
 
 export const demoOrders: Order[] = [
-  { id: '#SR-1049', date: 'Feb 18, 2026', status: 'Processing', total: '$248.00', items: 'Apex Carbon Tee, Neon Utility Cap' },
-  { id: '#SR-1038', date: 'Jan 29, 2026', status: 'Completed', total: '$119.00', items: 'Revolution Hoodie' },
-  { id: '#SR-1017', date: 'Dec 14, 2025', status: 'Completed', total: '$312.50', items: 'Night Run Jacket, Cargo Tech Pants' },
-  { id: '#SR-0994', date: 'Nov 03, 2025', status: 'Pending', total: '$88.00', items: 'Chrome Logo Longsleeve' }
+  { id: '#SR-1049', date: 'Feb 18, 2026', status: 'Processing', total: '₹248.00', items: 'Apex Carbon Tee, Neon Utility Cap' },
+  { id: '#SR-1038', date: 'Jan 29, 2026', status: 'Completed', total: '₹119.00', items: 'Revolution Hoodie' },
+  { id: '#SR-1017', date: 'Dec 14, 2025', status: 'Completed', total: '₹312.50', items: 'Night Run Jacket, Cargo Tech Pants' },
+  { id: '#SR-0994', date: 'Nov 03, 2025', status: 'Pending', total: '₹88.00', items: 'Chrome Logo Longsleeve' }
 ];
 
 export const demoAddresses: Addresses = {

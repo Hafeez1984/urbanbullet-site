@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.66.0",
     "@woocommerce/woocommerce-rest-api": "^1.0.2",
     "next": "16.2.10",
     "next-auth": "^4.24.14",
