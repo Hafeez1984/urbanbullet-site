@@ -13,6 +13,11 @@ PassengerAppType node
     
     # Send all requests to the Passenger handler (app.js)
     RewriteRule ^app\.js$ - [L]
+    
+    # Rewrite the root URL to app.js
+    RewriteRule ^$ app.js/ [L]
+    
+    # Rewrite other non-file, non-directory requests to app.js
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ app.js/$1 [QSA,L]

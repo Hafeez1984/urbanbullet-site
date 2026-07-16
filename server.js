@@ -10,6 +10,10 @@ const port = process.env.PORT || 3000;
 
 app.prepare().then(() => {
   createServer((req, res) => {
+    // Strip "/app.js" prefix if it exists (added by Apache/Passenger rewrite rules)
+    if (req.url.startsWith('/app.js')) {
+      req.url = req.url.slice(7) || '/';
+    }
     const parsedUrl = parse(req.url, true);
     handle(req, res, parsedUrl);
   }).listen(port, (err) => {
