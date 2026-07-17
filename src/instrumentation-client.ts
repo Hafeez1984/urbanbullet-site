@@ -1,9 +1,13 @@
 import * as Sentry from "@sentry/nextjs";
 
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_DSN_KEY,
-  tracesSampleRate: 0.01,
-  integrations: (integrations) => {
-    return integrations.filter((integration) => integration.name !== "BrowserSession");
-  },
-});
+const dsn = process.env.NEXT_PUBLIC_DSN_KEY;
+
+if (dsn && dsn.startsWith("https://")) {
+  Sentry.init({
+    dsn,
+    tracesSampleRate: 0.01,
+    integrations: (integrations) => {
+      return integrations.filter((integration) => integration.name !== "BrowserSession");
+    },
+  });
+}

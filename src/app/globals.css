@@ -175,6 +175,31 @@ html {
   width: 100%;
 }
 
+/* Footer Link Underline Animation */
+.link-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.link-underline::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  transform: scaleX(0);
+  height: 1px;
+  bottom: -1px;
+  left: 0;
+  background-color: currentColor;
+  transform-origin: bottom right;
+  transition: transform 0.25s ease-out;
+}
+
+.link-underline:hover::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+}
+
+
 /* Badge */
 .cart-badge {
   background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
