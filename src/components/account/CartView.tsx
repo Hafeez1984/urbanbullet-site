@@ -14,9 +14,11 @@ export default function CartView({ icons }: CartViewProps) {
   const { cartItems, updateQuantity, removeFromCart, clearCart } = useCart();
   const { showNotification } = useNotification();
 
+  const items = cartItems || [];
+
   const subtotal = React.useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  }, [cartItems]);
+    return items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 0), 0);
+  }, [items]);
 
   const shipping = subtotal > 150 ? 0 : subtotal > 0 ? 15.00 : 0;
   const tax = subtotal * 0.08; // 8% tax
@@ -34,14 +36,14 @@ export default function CartView({ icons }: CartViewProps) {
           <h3 className="section-title">Shopping Cart</h3>
           <p className="section-subtitle">Manage your selected items and configure checkout.</p>
         </div>
-        {cartItems.length > 0 && (
+        {items.length > 0 && (
           <button className="btn btn-danger" type="button" onClick={clearCart}>
             Clear Cart
           </button>
         )}
       </div>
 
-      {cartItems.length ? (
+      {items.length ? (
         <div className="cart-content-layout">
           <div className="table-wrap">
             <table>
@@ -55,7 +57,7 @@ export default function CartView({ icons }: CartViewProps) {
                 </tr>
               </thead>
               <tbody>
-                {cartItems.map((item) => (
+                {items.map((item) => (
                   <tr key={item.id}>
                     <td>
                       <div className="flex items-center gap-4 py-2">

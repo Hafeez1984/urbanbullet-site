@@ -16,11 +16,11 @@ export default function AccountDetailsView({
   const { showNotification } = useNotification();
   
   const [formData, setFormData] = useState({
-    firstName: customer.firstName || '',
-    lastName: customer.lastName || '',
-    displayName: customer.displayName || '',
-    email: customer.email || '',
-    phone: customer.phone || '',
+    firstName: customer?.firstName || '',
+    lastName: customer?.lastName || '',
+    displayName: customer?.displayName || '',
+    email: customer?.email || '',
+    phone: customer?.phone || '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',

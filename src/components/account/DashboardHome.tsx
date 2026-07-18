@@ -114,7 +114,7 @@ export default function DashboardHome({
         <div className="notice">
           {icons.info}
           <div>
-            <strong>Member since {customer.memberSince || '2023'}</strong>
+            <strong>Member since {customer?.memberSince || '2023'}</strong>
             <br />
             Your profile is ready for early-access launches. Add SMS updates to receive drop alerts first.
           </div>

@@ -53,7 +53,7 @@ export default function AddressesView({
   // Initialize multiple addresses list from initial object
   const [addressList, setAddressList] = useState<AddressDetail[]>(() => {
     const list: AddressDetail[] = [];
-    if (initialAddresses.billing && (initialAddresses.billing.line1 || initialAddresses.billing.name)) {
+    if (initialAddresses?.billing && (initialAddresses.billing.line1 || initialAddresses.billing.name)) {
       list.push({
         id: 'billing_default',
         type: 'billing',
@@ -67,7 +67,7 @@ export default function AddressesView({
         country: initialAddresses.billing.country || '',
       });
     }
-    if (initialAddresses.shipping && (initialAddresses.shipping.line1 || initialAddresses.shipping.name)) {
+    if (initialAddresses?.shipping && (initialAddresses.shipping.line1 || initialAddresses.shipping.name)) {
       list.push({
         id: 'shipping_default',
         type: 'shipping',

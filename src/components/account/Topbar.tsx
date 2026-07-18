@@ -39,8 +39,8 @@ export default function Topbar({
         <h2 className="page-title">
           {activeLabel === 'Dashboard' ? (
             (() => {
-              const fullName = customer.displayName || `${customer.firstName} ${customer.lastName}` || 'User';
-              const parts = fullName.split(' ');
+              const fullName = customer?.displayName || (customer?.firstName && customer?.lastName ? `${customer.firstName} ${customer.lastName}` : '') || 'Member';
+              const parts = fullName.trim().split(' ');
               if (parts.length > 1) {
                 const first = parts.slice(0, -1).join(' ');
                 const last = parts[parts.length - 1];
@@ -62,10 +62,10 @@ export default function Topbar({
 
       <div className="topbar-actions">
         <div className="user-chip">
-          <div className="avatar">{customer.avatarInitials || 'AR'}</div>
+          <div className="avatar">{customer?.avatarInitials || 'AR'}</div>
           <div>
-            <strong>{customer.displayName || `${customer.firstName} ${customer.lastName}`}</strong>
-            <span>{customer.email}</span>
+            <strong>{customer?.displayName || (customer ? `${customer.firstName} ${customer.lastName}` : 'Member')}</strong>
+            <span>{customer?.email || ''}</span>
           </div>
         </div>
         <Link href="/" className="btn btn-primary">
