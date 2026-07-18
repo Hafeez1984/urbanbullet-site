@@ -75,7 +75,7 @@
 }
 
 .account-shell {
-  width: min(1500px, 100%);
+  width: min(1380px, 100%);
   margin: auto;
   min-height: calc(100vh - 56px);
   display: grid;
@@ -390,7 +390,7 @@
 .page-title {
   margin: 0;
   font-family: var(--font-head);
-  font-size: clamp(1.6rem, 3vw, 2.55rem);
+  font-size: clamp(1.4rem, 2.5vw, 2.2rem);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   line-height: 1.08;

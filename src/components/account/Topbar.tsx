@@ -34,10 +34,10 @@ export default function Topbar({
 
       <div>
         <p className="eyebrow">
-          {activeLabel === 'Dashboard' ? 'THIS ACCOUNT BELONGS TO' : 'Account Console'}
+          {(activeLabel === 'Dashboard' || activeLabel === 'Cart') ? 'THIS ACCOUNT BELONGS TO' : 'Account Console'}
         </p>
-        <h2 className="page-title">
-          {activeLabel === 'Dashboard' ? (
+        <h2 className="page-title text-3xl md:text-4xl">
+          {(activeLabel === 'Dashboard' || activeLabel === 'Cart') ? (
             (() => {
               const fullName = customer?.displayName || (customer?.firstName && customer?.lastName ? `${customer.firstName} ${customer.lastName}` : '') || 'Member';
               const parts = fullName.trim().split(' ');
