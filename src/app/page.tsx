@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
+import { useRouter } from 'next/navigation';
 import Footer from '@/components/Footer';
 import { MOCK_PRODUCTS, Product } from '@/lib/mockData';
 
@@ -54,8 +55,10 @@ export default function Home() {
     }, 600);
   };
 
+  const router = useRouter();
+
   const handleCartClick = () => {
-    showNotification('Shopping cart panel opened! (Headless Integration)');
+    router.push('/account?tab=cart');
   };
 
   // Filter products by category and search query

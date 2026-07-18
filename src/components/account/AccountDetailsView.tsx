@@ -24,8 +24,10 @@ export default function AccountDetailsView({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
-    notes: '',
   });
+
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +53,7 @@ export default function AccountDetailsView({
       <div className="section-head">
         <div>
           <h3 className="section-title">Account Details</h3>
-          <p className="section-subtitle">Profile fields for identity validation and preferences.</p>
+          <p className="section-subtitle">Profile fields for identity validation and settings.</p>
         </div>
       </div>
 
@@ -113,40 +115,73 @@ export default function AccountDetailsView({
 
         <div className="field">
           <label htmlFor="password">New Password</label>
-          <input
-            className="input"
-            id="password"
-            type="password"
-            placeholder="••••••••••••"
-            value={formData.newPassword}
-            onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-          />
+          <div className="password-input-wrapper" style={{ position: 'relative', width: '100%' }}>
+            <input
+              className="input"
+              id="password"
+              type={showNewPassword ? 'text' : 'password'}
+              placeholder="••••••••••••"
+              value={formData.newPassword}
+              onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+              style={{ paddingRight: '40px', width: '100%' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--muted)',
+                outline: 'none',
+                cursor: 'pointer',
+                zIndex: 10,
+              }}
+              aria-label={showNewPassword ? "Hide password" : "Show password"}
+            >
+              <i className={`fas ${showNewPassword ? 'fa-eye-slash' : 'fa-eye'}`} />
+            </button>
+          </div>
         </div>
 
         <div className="field">
           <label htmlFor="confirmPassword">Confirm Password</label>
-          <input
-            className="input"
-            id="confirmPassword"
-            type="password"
-            placeholder="••••••••••••"
-            value={formData.confirmPassword}
-            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-          />
+          <div className="password-input-wrapper" style={{ position: 'relative', width: '100%' }}>
+            <input
+              className="input"
+              id="confirmPassword"
+              type={showConfirmPassword ? 'text' : 'password'}
+              placeholder="••••••••••••"
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+              style={{ paddingRight: '40px', width: '100%' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--muted)',
+                outline: 'none',
+                cursor: 'pointer',
+                zIndex: 10,
+              }}
+              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+            >
+              <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`} />
+            </button>
+          </div>
         </div>
 
-        <div className="field full">
-          <label htmlFor="notes">Style Preferences</label>
-          <textarea
-            className="textarea"
-            id="notes"
-            placeholder="Tell us your fit, size, and drop preferences..."
-            value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          />
-        </div>
-
-        <div className="field full">
+        <div className="field full" style={{ marginTop: '12px' }}>
           <button className="btn btn-primary" type="submit">
             Update Account
           </button>

@@ -4,18 +4,20 @@ import React, { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export const Header: React.FC = () => {
   const { cartCount } = useCart();
   const { showNotification } = useNotification();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const router = useRouter();
 
   const toggleMobileMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
   const handleCartClick = () => {
-    showNotification('Shopping cart panel opened! (Headless Integration)');
+    router.push('/account?tab=cart');
   };
 
   return (

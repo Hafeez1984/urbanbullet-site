@@ -33,9 +33,30 @@ export default function Topbar({
       </button>
 
       <div>
-        <p className="eyebrow">Account Console</p>
+        <p className="eyebrow">
+          {activeLabel === 'Dashboard' ? 'THIS ACCOUNT BELONGS TO' : 'Account Console'}
+        </p>
         <h2 className="page-title">
-          {activeLabel === 'Account Details' ? 'Account' : activeLabel} <span className="gradient-text">Hub</span>
+          {activeLabel === 'Dashboard' ? (
+            (() => {
+              const fullName = customer.displayName || `${customer.firstName} ${customer.lastName}` || 'User';
+              const parts = fullName.split(' ');
+              if (parts.length > 1) {
+                const first = parts.slice(0, -1).join(' ');
+                const last = parts[parts.length - 1];
+                return (
+                  <>
+                    {first} <span className="gradient-text">{last}</span>
+                  </>
+                );
+              }
+              return <span className="gradient-text">{fullName}</span>;
+            })()
+          ) : (
+            <>
+              {activeLabel === 'Account Details' ? 'Account' : activeLabel} <span className="gradient-text">Hub</span>
+            </>
+          )}
         </h2>
       </div>
 

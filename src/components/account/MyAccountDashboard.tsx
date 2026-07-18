@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth, User } from '@/context/AuthContext';
+import { useSearchParams } from 'next/navigation';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import DashboardHome from './DashboardHome';
 import OrdersView from './OrdersView';
+import CartView from './CartView';
 import AddressesView from './AddressesView';
 import AccountDetailsView from './AccountDetailsView';
 import './account.css';
@@ -26,6 +28,7 @@ export interface AddressDetail {
   state: string;
   postcode: string;
   country: string;
+  phone?: string;
 }
 
 export interface Addresses {
@@ -37,6 +40,11 @@ const icons = {
   dashboard: (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="22" height="22">
       <path d="M4 13h7V4H4v9Zm0 7h7v-5H4v5Zm9 0h7v-9h-7v9Zm0-16v5h7V4h-7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+    </svg>
+  ),
+  cart: (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="22" height="22">
+      <path d="M6 8a6 6 0 0 1 12 0v2H6V8Zm-2 2h16l1 10H3L4 10Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
   orders: (
@@ -105,6 +113,7 @@ const icons = {
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: icons.dashboard },
   { id: 'orders', label: 'Orders', icon: icons.orders },
+  { id: 'cart', label: 'Cart', icon: icons.cart },
   { id: 'addresses', label: 'Addresses', icon: icons.addresses },
   { id: 'account', label: 'Account Details', icon: icons.account }
 ];
@@ -134,7 +143,8 @@ export const demoAddresses: Addresses = {
     city: 'Los Angeles',
     state: 'CA',
     postcode: '90015',
-    country: 'United States'
+    country: 'United States',
+    phone: '+1 (555) 014-9090'
   },
   shipping: {
     name: 'Alex Rider',
@@ -143,7 +153,8 @@ export const demoAddresses: Addresses = {
     city: 'Brooklyn',
     state: 'NY',
     postcode: '11201',
-    country: 'United States'
+    country: 'United States',
+    phone: '+1 (555) 014-9090'
   }
 };
 
@@ -173,14 +184,23 @@ export default function MyAccountDashboard({
     if (propAddresses) return propAddresses;
     if (isDemo) return demoAddresses;
     return {
-      billing: { name: '', line1: '', line2: '', city: '', state: '', postcode: '', country: '' },
-      shipping: { name: '', line1: '', line2: '', city: '', state: '', postcode: '', country: '' }
+      billing: { name: '', line1: '', line2: '', city: '', state: '', postcode: '', country: '', phone: '' },
+      shipping: { name: '', line1: '', line2: '', city: '', state: '', postcode: '', country: '', phone: '' }
     };
   }, [propAddresses, isDemo]);
 
   const [active, setActive] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['dashboard', 'orders', 'cart', 'addresses', 'account'].includes(tab)) {
+      setActive(tab);
+    }
+  }, [searchParams]);
 
   const activeLabel = useMemo(() => {
     return navItems.find((item) => item.id === active)?.label || 'Dashboard';
@@ -215,6 +235,7 @@ export default function MyAccountDashboard({
             <DashboardHome customer={currentCustomer} orders={orders} icons={icons} />
           )}
           {active === 'orders' && <OrdersView orders={orders} icons={icons} />}
+          {active === 'cart' && <CartView icons={icons} />}
           {active === 'addresses' && <AddressesView addresses={addresses} />}
           {active === 'account' && (
             <AccountDetailsView customer={currentCustomer} onUpdate={updateUser} />
