@@ -63,7 +63,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ categorySlug }) => {
         
         {loading && products.length === 0 ? (
           /* High-tech skeleton loader */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3">
             {[1, 2, 3].map((n) => (
               <div key={n} className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 space-y-4 animate-pulse">
                 <div className="bg-zinc-800 h-96 rounded-xl w-full"></div>
@@ -83,7 +83,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ categorySlug }) => {
             <p className="text-gray-600 mt-2">Check back soon for new streetwear drops.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

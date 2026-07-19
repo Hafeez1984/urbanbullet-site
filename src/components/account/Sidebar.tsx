@@ -34,15 +34,11 @@ export default function Sidebar({
   navItems,
   icons,
 }: SidebarProps) {
-  const handleNav = (id: string) => {
-    setActive(id);
-    setMobileOpen(false);
-  };
 
   return (
     <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`} aria-label="Account navigation">
       <div className="brand-row">
-        <Link href="/" className="brand hover:opacity-90 transition">
+        <Link href="/" className="brand hover:opacity-90 transition" onClick={() => setMobileOpen(false)}>
           <div className="brand-mark">{icons.bolt}</div>
           <div className="brand-copy">
             <h1 className="brand-title">
@@ -77,15 +73,18 @@ export default function Sidebar({
         <ul className="nav-list">
           {navItems.map((item) => (
             <li key={item.id}>
-              <button
-                type="button"
+              <Link
+                href={`/account?tab=${item.id}`}
                 className={`nav-button ${active === item.id ? 'active' : ''}`}
-                onClick={() => handleNav(item.id)}
+                onClick={() => {
+                  setActive(item.id);
+                  setMobileOpen(false);
+                }}
                 aria-current={active === item.id ? 'page' : undefined}
               >
                 {item.icon}
                 <span className="nav-label">{item.label}</span>
-              </button>
+              </Link>
             </li>
           ))}
         </ul>

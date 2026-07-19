@@ -49,35 +49,37 @@ export default function DashboardHome({
 
   return (
     <div className="content-grid">
-      <div className="card stat-card span-3">
-        <div className="stat-icon">{icons.orders}</div>
-        <div>
-          <h3 className="stat-value">{orders.length}</h3>
-          <p className="stat-label">Total Orders</p>
+      <div className="col-span-12 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+        <div className="card stat-card !col-span-1">
+          <div className="stat-icon">{icons.orders}</div>
+          <div>
+            <h3 className="stat-value">{orders.length}</h3>
+            <p className="stat-label">Total Orders</p>
+          </div>
         </div>
-      </div>
 
-      <div className="card stat-card span-3">
-        <div className="stat-icon purple">{icons.card}</div>
-        <div>
-          <h3 className="stat-value">{totalSpend}</h3>
-          <p className="stat-label">Lifetime Spend</p>
+        <div className="card stat-card !col-span-1">
+          <div className="stat-icon purple">{icons.card}</div>
+          <div>
+            <h3 className="stat-value">{totalSpend}</h3>
+            <p className="stat-label">Lifetime Spend</p>
+          </div>
         </div>
-      </div>
 
-      <div className="card stat-card span-3">
-        <div className="stat-icon">{icons.spark}</div>
-        <div>
-          <h3 className="stat-value">VIP</h3>
-          <p className="stat-label">Member Tier</p>
+        <div className="card stat-card !col-span-1">
+          <div className="stat-icon">{icons.spark}</div>
+          <div>
+            <h3 className="stat-value">VIP</h3>
+            <p className="stat-label">Member Tier</p>
+          </div>
         </div>
-      </div>
 
-      <div className="card stat-card span-3">
-        <div className="stat-icon purple">{icons.package}</div>
-        <div>
-          <h3 className="stat-value">{latestOrder.status}</h3>
-          <p className="stat-label">Latest Order</p>
+        <div className="card stat-card !col-span-1">
+          <div className="stat-icon purple">{icons.package}</div>
+          <div>
+            <h3 className="stat-value">{latestOrder.status}</h3>
+            <p className="stat-label">Latest Order</p>
+          </div>
         </div>
       </div>
 

@@ -189,18 +189,21 @@ export default function MyAccountDashboard({
     };
   }, [propAddresses, isDemo]);
 
-  const [active, setActive] = useState('dashboard');
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-
   const searchParams = useSearchParams();
-
-  useEffect(() => {
+  const active = useMemo(() => {
     const tab = searchParams.get('tab');
     if (tab && ['dashboard', 'orders', 'cart', 'addresses', 'account'].includes(tab)) {
-      setActive(tab);
+      return tab;
     }
+    return 'dashboard';
   }, [searchParams]);
+
+  const setActive = (id: string) => {
+    // Navigating via Next.js <Link> automatically updates searchParams, updating active tab
+  };
+
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const activeLabel = useMemo(() => {
     return navItems.find((item) => item.id === active)?.label || 'Dashboard';

@@ -16,14 +16,14 @@ export default function ContactPage() {
 
       <main className="container mx-auto px-6 pt-32 pb-20 flex-grow max-w-6xl">
         {/* Page Header */}
-        <div className="mb-12 border-b border-zinc-800 pb-8 text-center md:text-left">
-          <span className="text-xs font-mono tracking-widest neon-cyan block mb-2 uppercase">
+        <div className="mb-12 border border-zinc-800/80 rounded-2xl p-6 md:p-8 bg-zinc-900 text-center md:text-left">
+          <span className="text-xs font-mono tracking-widest text-zinc-600 block mb-2 uppercase">
             [ ESTABLISH // COMMUNICATIONS // SQUAD SUPPORT ]
           </span>
           <h1 className="text-4xl md:text-5xl font-black orbitron mb-4">
             CONTACT <span className="neon-purple">US</span>
           </h1>
-          <p className="text-zinc-400 font-mono text-sm max-w-xl">
+          <p className="text-zinc-900 font-mono text-sm max-w-xl">
             Have a question about custom print-on-demand sizing, defect replacements, or shipping? Broadcast your transmission below.
           </p>
         </div>
@@ -33,7 +33,7 @@ export default function ContactPage() {
           {/* Left Column: Coordinates / Info */}
           <div className="lg:col-span-5 flex flex-col gap-6">
             {/* Info Card */}
-            <div className="bg-zinc-950/80 border border-zinc-800/80 rounded-2xl p-6 md:p-8 shadow-2xl backdrop-blur-md flex-grow flex flex-col justify-between">
+            <div className="bg-zinc-900 border border-cyan-500 text-white rounded-2xl p-6 md:p-8 shadow-2xl backdrop-blur-md flex-grow flex flex-col justify-between">
               <div className="space-y-6">
                 <div>
                   <h3 className="text-xs font-mono uppercase tracking-widest text-cyan-400 mb-2">// Main Base Coordinates</h3>
@@ -60,9 +60,9 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-zinc-100 mb-1">Official Support Mailbox</p>
-                      <p className="text-zinc-400 text-xs font-mono">
-                        support@urbanbullet.in
-                      </p>
+                      <a href="mailto:urbanbullet1984@gmail.com" className="text-zinc-400 text-xs font-mono hover:text-purple-400 transition-colors">
+                        urbanbullet1984@gmail.com
+                      </a>
                     </div>
                   </div>
                 </div>
