@@ -128,27 +128,27 @@ export const Footer: React.FC = () => {
                 <h3 className="font-mono text-[13px] md:text-[14px] font-bold tracking-[0.24em] uppercase text-white/30 mb-8 md:mb-10">Legal & Help</h3>
                 <ul className="space-y-[14px]">
                   <li>
-                    <Link href="/privacy" className="link-underline font-mono text-[12px] md:text-[13px] tracking-[0.02em] text-white/50 hover:text-white transition-colors">
+                    <Link href="/privacy-policy" className="link-underline font-mono text-[12px] md:text-[13px] tracking-[0.02em] text-white/50 hover:text-white transition-colors">
                       Privacy Policy
                     </Link>
                   </li>
                   <li>
-                    <Link href="/terms" className="link-underline font-mono text-[12px] md:text-[13px] tracking-[0.02em] text-white/50 hover:text-white transition-colors">
+                    <Link href="/terms-and-conditions" className="link-underline font-mono text-[12px] md:text-[13px] tracking-[0.02em] text-white/50 hover:text-white transition-colors">
                       Terms & Conditions
                     </Link>
                   </li>
                   <li>
-                    <Link href="/returns" className="link-underline font-mono text-[12px] md:text-[13px] tracking-[0.02em] text-white/50 hover:text-white transition-colors">
+                    <Link href="/return-policy" className="link-underline font-mono text-[12px] md:text-[13px] tracking-[0.02em] text-white/50 hover:text-white transition-colors">
                       Return & Refund Policy
                     </Link>
                   </li>
                   <li>
-                    <Link href="/shipping" className="link-underline font-mono text-[12px] md:text-[13px] tracking-[0.02em] text-white/50 hover:text-white transition-colors">
+                    <Link href="/shipping-policy" className="link-underline font-mono text-[12px] md:text-[13px] tracking-[0.02em] text-white/50 hover:text-white transition-colors">
                       Shipping Policy
                     </Link>
                   </li>
                   <li>
-                    <Link href="/account" className="inline-flex items-center gap-2 font-mono text-[12px] md:text-[13px] tracking-[0.02em] text-white hover:text-white transition-colors">
+                    <Link href="/contact" className="inline-flex items-center gap-2 font-mono text-[12px] md:text-[13px] tracking-[0.02em] text-white hover:text-white transition-colors">
                       <span className="link-underline">Contact Us</span>
                       <span className="h-1 w-1 rounded-full bg-white animate-pulse"></span>
                     </Link>
