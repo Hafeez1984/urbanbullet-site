@@ -54,15 +54,29 @@ export default function ContactPage() {
 
                 <div>
                   <h3 className="text-xs font-mono uppercase tracking-widest text-purple-400 mb-2">// Digital Uplink</h3>
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-purple-400 shrink-0 mt-1">
-                      <i className="fas fa-envelope"></i>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-purple-400 shrink-0 mt-1">
+                        <i className="fas fa-envelope"></i>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-zinc-100 mb-1">Official Support Mailbox</p>
+                        <a href="mailto:urbanbullet1984@gmail.com" className="text-zinc-400 text-xs font-mono hover:text-purple-400 transition-colors">
+                          urbanbullet1984@gmail.com
+                        </a>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-zinc-100 mb-1">Official Support Mailbox</p>
-                      <a href="mailto:urbanbullet1984@gmail.com" className="text-zinc-400 text-xs font-mono hover:text-purple-400 transition-colors">
-                        urbanbullet1984@gmail.com
-                      </a>
+
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-emerald-400 shrink-0 mt-1">
+                        <i className="fab fa-whatsapp text-base"></i>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-zinc-100 mb-1">WhatsApp Support</p>
+                        <a href="https://wa.me/919447921089" target="_blank" rel="noopener noreferrer" className="text-zinc-400 text-xs font-mono hover:text-emerald-400 transition-colors">
+                          +91-9447921089
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
