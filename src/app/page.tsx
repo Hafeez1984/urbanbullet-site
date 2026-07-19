@@ -256,7 +256,7 @@ export default function Home() {
           </div>
 
           {/* Product Cards Shell Grid */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
             {filteredProducts.map((product) => {
               const productRipples = ripples[product.id] || [];
               return (
