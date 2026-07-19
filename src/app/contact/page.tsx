@@ -16,7 +16,7 @@ export default function ContactPage() {
 
       <main className="container mx-auto px-6 pt-32 pb-20 flex-grow max-w-6xl">
         {/* Page Header */}
-        <div className="mb-12 border border-zinc-800/80 rounded-2xl p-6 md:p-8 bg-zinc-900 text-center md:text-left">
+        <div className="mb-6 border border-zinc-800/80 rounded-2xl py-6 px-6 md:px-8 bg-zinc-900 text-center md:text-left">
           <span className="text-xs font-mono tracking-widest text-zinc-600 block mb-2 uppercase">
             [ ESTABLISH // COMMUNICATIONS // SQUAD SUPPORT ]
           </span>

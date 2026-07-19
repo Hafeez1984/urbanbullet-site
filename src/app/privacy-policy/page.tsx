@@ -19,8 +19,8 @@ export default function PrivacyPolicyPage() {
           <span className="text-xs font-mono tracking-widest text-zinc-600 block mb-2 uppercase">
             [ SECTION // 04 // DATA PRIVACY PROTOCOLS ]
           </span>
-          <h1 className="text-4xl md:text-5xl font-black orbitron mb-4">
-            PRIVACY <span className="neon-purple">POLICY</span>
+          <h1 className="text-4xl md:text-5xl text-zinc-900 font-extrabold orbitron mb-4">
+            PRIVACY POLICY
           </h1>
           <p className="text-zinc-900 font-mono text-sm">
             LAST UPDATED: JULY 2026 // COMPLIANT WITH IT ACT 2000 & DIGITAL PERSONAL DATA PROTECTION (DPDP) ACT 2023

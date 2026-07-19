@@ -19,8 +19,8 @@ export default function ReturnPolicyPage() {
           <span className="text-xs font-mono tracking-widest text-zinc-600 block mb-2 uppercase">
             [ SECTION // 01 // RETURN & REFUND POLICY ]
           </span>
-          <h1 className="text-4xl md:text-5xl font-black orbitron mb-4">
-            RETURN & <span className="neon-cyan">REFUND POLICY</span>
+          <h1 className="text-4xl md:text-5xl text-zinc-900 font-extrabold orbitron mb-4">
+            RETURN & REFUND POLICY
           </h1>
           <p className="text-zinc-900 font-mono text-sm">
             LAST UPDATED: JULY 2026 // COMPLIANT WITH INDIAN E-COMMERCE LAW & PRINT-ON-DEMAND FULFILLMENT SPECIFICATIONS

@@ -201,7 +201,7 @@ export const Footer: React.FC = () => {
           </div>
         </div>
         {/* Bottom Bar */}
-        <div className="border-t border-white/[0.08] py-7 md:py-6 flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col sm:flex-row justify-between items-center w-full border-t border-white/[0.08] py-4">
           {/* Multicolor continuous line logo for Urban Bullet */}
           <Link href="/" className="flex items-center gap-3 group" aria-label="Home">
             <svg width="86" height="20" viewBox="0 0 86 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
@@ -225,7 +225,7 @@ export const Footer: React.FC = () => {
             <span className="font-display font-extrabold tracking-[-0.02em] text-[13px] uppercase leading-none pt-[1px]">Urban Bullet</span>
           </Link>
           {/* Right: Copyright */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 font-mono text-[11px] leading-[1.5] tracking-[0.02em] text-white/35">
+          <div className="font-mono text-[11px] leading-[1.5] tracking-[0.02em] text-white/35">
             <span className="uppercase">
               © <span id="current-year">{currentYear}</span> Urban Bullet. All rights reserved.
             </span>

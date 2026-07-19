@@ -19,8 +19,8 @@ export default function TermsAndConditionsPage() {
           <span className="text-xs font-mono tracking-widest text-zinc-600 block mb-2 uppercase">
             [ SECTION // 03 // TERMS & CONDITIONS ]
           </span>
-          <h1 className="text-4xl md:text-5xl font-black orbitron mb-4">
-            TERMS & <span className="neon-cyan">CONDITIONS</span>
+          <h1 className="text-4xl md:text-5xl text-zinc-900 font-extrabold orbitron mb-4">
+            TERMS & CONDITIONS
           </h1>
           <p className="text-zinc-900 font-mono text-sm">
             LAST UPDATED: JULY 2026 // USER AGREEMENT & JURISDICTIONAL MEMORANDUM

@@ -19,8 +19,8 @@ export default function ShippingPolicyPage() {
           <span className="text-xs font-mono tracking-widest text-zinc-600 block mb-2 uppercase">
             [ SECTION // 02 // SHIPPING & DELIVERY POLICY ]
           </span>
-          <h1 className="text-4xl md:text-5xl font-black orbitron mb-4">
-            SHIPPING <span className="neon-purple">POLICY</span>
+          <h1 className="text-4xl md:text-5xl text-zinc-900 font-extrabold orbitron mb-4">
+            SHIPPING POLICY
           </h1>
           <p className="text-zinc-900 font-mono text-sm">
             LAST UPDATED: JULY 2026 // NATIONWIDE LOGISTICS & MANUFACTURING PROTOCOLS
