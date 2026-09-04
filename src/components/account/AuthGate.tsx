@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -73,7 +73,7 @@ export const AuthGate: React.FC = () => {
     }
   }, [isStatic]);
 
-  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -84,6 +84,7 @@ export const AuthGate: React.FC = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Credentials Triggered');
     if (!email || !password) {
       setErrorMsg('Please fill in all fields.');
       return;
@@ -92,11 +93,12 @@ export const AuthGate: React.FC = () => {
     setIsPending(true);
 
     try {
-      const res = await login(email, password);
-      if (res.success) {
-        showNotification('Signed in successfully!');
-      } else {
+      const res = await signIn('credentials', { email, password, redirect: false });
+      if (res?.error) {
         setErrorMsg(res.error || 'Authentication failed.');
+      } else {
+        await login(email, password);
+        showNotification('Signed in successfully!');
       }
     } catch (err) {
       setErrorMsg('An unexpected error occurred.');
@@ -492,15 +494,15 @@ export const AuthGate: React.FC = () => {
         <div className="auth-tabs">
           <button 
             type="button" 
-            className={`auth-tab-btn ${activeTab === 'signin' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('signin'); setErrorMsg(''); }}
+            className={`auth-tab-btn ${isLogin ? 'active' : ''}`}
+            onClick={() => setIsLogin(true)}
           >
             Sign In
           </button>
           <button 
             type="button" 
-            className={`auth-tab-btn ${activeTab === 'signup' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('signup'); setErrorMsg(''); }}
+            className={`auth-tab-btn ${!isLogin ? 'active' : ''}`}
+            onClick={() => setIsLogin(false)}
           >
             Sign Up
           </button>
@@ -514,7 +516,7 @@ export const AuthGate: React.FC = () => {
           <div className="google-signin-container">
             <button
               type="button"
-              onClick={handleGoogleSignIn}
+              onClick={(e) => { e.preventDefault(); console.log('Google Auth Triggered'); signIn('google', { callbackUrl: '/account' }); }}
               className="google-btn"
             >
               <svg viewBox="0 0 48 48" className="google-icon" width="20" height="20" aria-hidden="true">
@@ -531,7 +533,7 @@ export const AuthGate: React.FC = () => {
 
         {errorMsg && <div className="auth-error">{errorMsg}</div>}
 
-        {activeTab === 'signin' ? (
+        {isLogin ? (
           <form className="auth-form" onSubmit={handleSignIn}>
             <div className="auth-field">
               <label className="auth-label" htmlFor="auth-email">Email Address</label>
@@ -559,6 +561,7 @@ export const AuthGate: React.FC = () => {
                 disabled={isPending}
                 required
               />
+              <a href="/account/reset" className="text-sm text-zinc-400 hover:text-cyan-400 mt-2 block text-right">Forgot password?</a>
             </div>
 
             <button className="auth-submit-btn" type="submit" disabled={isPending}>
@@ -568,7 +571,7 @@ export const AuthGate: React.FC = () => {
                   <span>Syncing...</span>
                 </>
               ) : (
-                <span>Access Console</span>
+                <span>Sign In</span>
               )}
             </button>
           </form>
@@ -653,23 +656,11 @@ export const AuthGate: React.FC = () => {
                   <span>Initializing...</span>
                 </>
               ) : (
-                <span>Register Signal</span>
+                <span>Sign Up</span>
               )}
             </button>
           </form>
         )}
-
-        <div className="auth-helper-note">
-          {activeTab === 'signin' ? (
-            <>
-              Testing credentials available: Use <strong onClick={() => { setEmail('alex@streetrevolution.com'); setPassword('any-password'); }}>alex@streetrevolution.com</strong> (click to autofill).
-            </>
-          ) : (
-            <>
-              Already registered? Switch tab to <strong onClick={() => setActiveTab('signin')}>Sign In</strong>.
-            </>
-          )}
-        </div>
       </div>
     </div>
   );

@@ -37,7 +37,7 @@ const DEMO_USER: User = {
 const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { data: session, status } = useSession();
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     const isStatic = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
@@ -57,10 +57,17 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    // Safety timeout: maximum 3.5 seconds for session loading state
+    const safetyTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 3500);
+
     if (status === 'loading') {
       setIsLoading(true);
-      return;
+      return () => clearTimeout(safetyTimer);
     }
+
+    clearTimeout(safetyTimer);
 
     if (session?.user) {
       const name = session.user.name || 'Google User';
@@ -93,6 +100,8 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     setIsLoading(false);
+
+    return () => clearTimeout(safetyTimer);
   }, [session, status]);
 
   const login = async (email: string, password: string) => {
