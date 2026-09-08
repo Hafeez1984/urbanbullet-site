@@ -5,14 +5,47 @@ import Link from 'next/link';
 
 export default function PasswordResetPage() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [confirmationMessage, setConfirmationMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !email.trim()) {
+      setErrorMessage('Please enter a valid email address.');
+      setStatus('error');
+      return;
+    }
+
     setStatus('loading');
-    // Simulate API request to backend
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setStatus('success');
+    setErrorMessage('');
+    setConfirmationMessage('');
+
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setStatus('success');
+        setConfirmationMessage(
+          data.message || 'If an account exists for that email, a reset link has been dispatched.'
+        );
+      } else {
+        setStatus('error');
+        setErrorMessage(data.error || 'Failed to process request. Please try again.');
+      }
+    } catch (error) {
+      console.error('Password reset request error:', error);
+      setStatus('error');
+      setErrorMessage('An unexpected network error occurred. Please try again.');
+    }
   };
 
   return (
@@ -50,11 +83,37 @@ export default function PasswordResetPage() {
         </div>
 
         {status === 'success' ? (
-          <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-sm font-sans">
-            If an account exists for that email, a reset link has been dispatched.
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-sm font-sans flex items-start gap-3">
+              <svg className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <div>{confirmationMessage}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setStatus('idle');
+                setEmail('');
+                setErrorMessage('');
+                setConfirmationMessage('');
+              }}
+              className="w-full py-3 px-4 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold rounded-xl transition-all text-xs uppercase tracking-wider font-mono cursor-pointer"
+            >
+              Reset another account
+            </button>
           </div>
         ) : (
           <form className="space-y-5" onSubmit={handleSubmit}>
+            {status === 'error' && errorMessage && (
+              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm font-sans flex items-start gap-3">
+                <svg className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>{errorMessage}</div>
+              </div>
+            )}
+
             <div>
               <label htmlFor="reset-email" className="block text-xs font-semibold uppercase tracking-wider text-zinc-300 mb-2 font-mono">
                 Email Address
@@ -75,9 +134,19 @@ export default function PasswordResetPage() {
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="w-full py-3.5 px-4 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 text-sm uppercase tracking-wider font-mono cursor-pointer disabled:opacity-50"
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 text-sm uppercase tracking-wider font-mono cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {status === 'loading' ? 'Sending...' : 'Send Reset Link'}
+              {status === 'loading' ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Sending...</span>
+                </>
+              ) : (
+                'Send Reset Link'
+              )}
             </button>
           </form>
         )}

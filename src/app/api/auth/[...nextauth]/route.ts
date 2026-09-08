@@ -2,18 +2,7 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-export const dynamic = "force-static";
-
-export function generateStaticParams() {
-  return [
-    { nextauth: ["signin"] },
-    { nextauth: ["signout"] },
-    { nextauth: ["session"] },
-    { nextauth: ["providers"] },
-    { nextauth: ["csrf"] },
-    { nextauth: ["callback"] }
-  ];
-}
+export const dynamic = "force-dynamic";
 
 console.log("[NextAuth Route] Init. NEXTAUTH_URL:", process.env.NEXTAUTH_URL, "Secret exists:", !!process.env.NEXTAUTH_SECRET);
 

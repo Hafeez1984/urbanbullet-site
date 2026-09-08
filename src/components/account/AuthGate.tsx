@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import { signIn } from 'next-auth/react';
@@ -561,7 +562,7 @@ export const AuthGate: React.FC = () => {
                 disabled={isPending}
                 required
               />
-              <a href="/account/reset" className="text-sm text-zinc-400 hover:text-cyan-400 mt-2 block text-right">Forgot password?</a>
+              <Link href="/account/reset" className="text-sm text-zinc-400 hover:text-cyan-400 mt-2 block text-right">Forgot password?</Link>
             </div>
 
             <button className="auth-submit-btn" type="submit" disabled={isPending}>
