@@ -25,21 +25,29 @@ function getStaticExportFlag() {
 }
 
 const isStatic = getStaticExportFlag();
-const targetDir = path.join(__dirname, '..', 'src', 'app', 'api', 'auth', '[...nextauth]');
-const targetFile = path.join(targetDir, 'route.ts');
-const sourceFile = path.join(targetDir, isStatic ? 'route.static.ts' : 'route.dynamic.ts');
+
+const routesToSwap = [
+  path.join(__dirname, '..', 'src', 'app', 'api', 'auth', '[...nextauth]'),
+  path.join(__dirname, '..', 'src', 'app', 'api', 'auth', 'reset-password'),
+];
 
 console.log(`[Prebuild] Detected NEXT_PUBLIC_STATIC_EXPORT = ${isStatic}`);
-console.log(`[Prebuild] Copying ${path.basename(sourceFile)} to ${path.basename(targetFile)}`);
 
-try {
-  if (!fs.existsSync(sourceFile)) {
-    console.error(`[Prebuild] Error: Source file ${sourceFile} does not exist!`);
+for (const targetDir of routesToSwap) {
+  const targetFile = path.join(targetDir, 'route.ts');
+  const sourceFile = path.join(targetDir, isStatic ? 'route.static.ts' : 'route.dynamic.ts');
+  console.log(`[Prebuild] Copying ${path.basename(sourceFile)} to ${path.basename(targetFile)} in ${path.basename(targetDir)}`);
+
+  try {
+    if (!fs.existsSync(sourceFile)) {
+      console.error(`[Prebuild] Error: Source file ${sourceFile} does not exist!`);
+      process.exit(1);
+    }
+    fs.copyFileSync(sourceFile, targetFile);
+    console.log(`[Prebuild] Successfully updated ${path.basename(targetDir)} Route Handler configuration.`);
+  } catch (err) {
+    console.error(`[Prebuild] Failed to copy configuration file for ${path.basename(targetDir)}:`, err);
     process.exit(1);
   }
-  fs.copyFileSync(sourceFile, targetFile);
-  console.log('[Prebuild] Successfully updated Route Handler configuration.');
-} catch (err) {
-  console.error('[Prebuild] Failed to copy configuration file:', err);
-  process.exit(1);
 }
+
