@@ -285,3 +285,9 @@ html {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.scanline-bg { background: linear-gradient(to bottom, transparent 50%, rgba(0, 240, 255, 0.04) 50%); background-size: 100% 4px; }
+.cyber-chamfer { clip-path: polygon(0 14px, 14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px)); }
+.cyber-chamfer-button { clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+.cyber-badge-clip { clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+

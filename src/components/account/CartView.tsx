@@ -49,17 +49,17 @@ export default function CartView({ icons }: CartViewProps) {
             <table>
               <thead>
                 <tr>
-                  <th>Item</th>
-                  <th>Price</th>
-                  <th>Quantity</th>
-                  <th>Total</th>
-                  <th>Action</th>
+                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">Item</th>
+                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">Price</th>
+                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">Quantity</th>
+                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">Total</th>
+                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id}>
-                    <td>
+                    <td className="py-6 px-2 border-b border-gray-900/50">
                       <div className="flex items-center gap-4 py-2">
                         {item.image && (
                           <img
@@ -80,8 +80,8 @@ export default function CartView({ icons }: CartViewProps) {
                         </div>
                       </div>
                     </td>
-                    <td className="font-mono">₹{item.price.toFixed(2)}</td>
-                    <td>
+                    <td className="py-6 px-2 border-b border-gray-900/50 font-mono">₹{item.price.toFixed(2)}</td>
+                    <td className="py-6 px-2 border-b border-gray-900/50">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -102,12 +102,12 @@ export default function CartView({ icons }: CartViewProps) {
                         </button>
                       </div>
                     </td>
-                    <td className="font-mono text-[var(--cyan)] font-semibold">
+                    <td className="py-6 px-2 border-b border-gray-900/50 font-mono text-[var(--cyan)] font-semibold">
                       ₹{(item.price * item.quantity).toFixed(2)}
                     </td>
-                    <td>
+                    <td className="py-6 px-2 border-b border-gray-900/50">
                       <button
-                        className="link-action font-mono text-[var(--danger)] hover:text-rose-400"
+                        className="link-action font-mono text-[var(--danger)] hover:text-red-500 transition-colors"
                         type="button"
                         onClick={() => removeFromCart(item.id)}
                       >

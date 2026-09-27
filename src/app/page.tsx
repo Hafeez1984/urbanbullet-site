@@ -7,6 +7,7 @@ import { useNotification } from '@/context/NotificationContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { ProductCard } from '@/components/ProductCard';
 import { MOCK_PRODUCTS, Product } from '@/lib/mockData';
 
 export default function Home() {
@@ -256,137 +257,10 @@ export default function Home() {
           </div>
 
           {/* Product Cards Shell Grid */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {filteredProducts.map((product) => {
-              const productRipples = ripples[product.id] || [];
-              return (
-                <div 
-                  key={product.id}
-                  className="rounded-3xl overflow-hidden transition-all duration-500 ease-out group"
-                  style={{
-                    background: 'rgba(20, 20, 20, 0.8)',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                  }}
-                  // Hover effects: translateY(-8px) and cyan box shadow
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-8px)';
-                    e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.6), 0 0 30px rgba(6, 182, 212, 0.25)';
-                    e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.2)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
-                  }}
-                >
-                  {/* Product Image Panel */}
-                  <div className="relative overflow-hidden aspect-[4/5] bg-zinc-950">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      src={product.image.sourceUrl} 
-                      alt={product.image.altText || product.name} 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-
-                    {/* Sale / New Badges */}
-                    <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
-                      {product.onSale && (
-                        <span className="bg-red-500 text-white text-[10px] font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-[0_4px_10px_rgba(239,68,68,0.4)]">
-                          SALE
-                        </span>
-                      )}
-                      {product.isNew && (
-                        <span 
-                          className="text-white text-[10px] font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full"
-                          style={{
-                            background: 'linear-gradient(135deg, #06b6d4 0%, #a855f7 100%)',
-                            boxShadow: '0 4px 10px rgba(6, 182, 212, 0.3)',
-                          }}
-                        >
-                          NEW
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Add to Cart Overlay Button (appears on card hover) */}
-                    <div className="absolute inset-x-4 bottom-4 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 flex gap-2">
-                      <button
-                        onClick={(e) => handleAddToCart(product, e)}
-                        className="w-full py-4 rounded-full font-bold text-xs uppercase tracking-wider cursor-pointer relative overflow-hidden flex items-center justify-center gap-2 select-none shadow-[0_10px_20px_rgba(6,182,212,0.25)] transition-transform duration-300 hover:scale-[1.02]"
-                        style={{
-                          background: 'linear-gradient(135deg, #06b6d4 0%, #a855f7 100%)',
-                          color: '#fff',
-                        }}
-                      >
-                        <i className="fas fa-shopping-cart text-sm"></i>
-                        <span>ADD TO CART</span>
-
-                        {/* Ripple animation elements */}
-                        {productRipples.map((ripple) => (
-                          <span
-                            key={ripple.id}
-                            className="absolute bg-white/40 rounded-full pointer-events-none"
-                            style={{
-                              left: ripple.x,
-                              top: ripple.y,
-                              width: '20px',
-                              height: '20px',
-                              transform: 'translate(-50%, -50%)',
-                              animation: 'ripple 0.6s ease-out forwards',
-                            }}
-                          />
-                        ))}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Product Info Block */}
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-lg font-bold tracking-tight text-white group-hover:text-cyan-400 transition-colors duration-300">
-                        {product.name}
-                      </h3>
-                      <button 
-                        onClick={() => showNotification(`Added ${product.name} to wishlist!`)}
-                        className="text-zinc-500 hover:text-red-500 transition-colors cursor-pointer p-1"
-                        aria-label="Add to wishlist"
-                      >
-                        <i className="far fa-heart text-lg"></i>
-                      </button>
-                    </div>
-                    
-                    <p className="text-zinc-500 text-sm mb-4 font-light leading-relaxed">
-                      {product.shortDescription}
-                    </p>
-
-                    {/* Ratings */}
-                    <div className="flex items-center space-x-1 mb-4">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <i 
-                          key={i} 
-                          className={`fas fa-star text-xs ${
-                            i < product.averageRating ? 'text-yellow-400' : 'text-zinc-800'
-                          }`}
-                        />
-                      ))}
-                      <span className="text-[10px] text-zinc-600 font-bold ml-2">({product.reviewCount})</span>
-                    </div>
-
-                    {/* Pricing */}
-                    <div className="flex items-baseline space-x-3">
-                      <span className="text-xl font-black orbitron" style={{ color: '#06b6d4' }}>
-                        {product.price}
-                      </span>
-                      {product.onSale && product.regularPrice && (
-                        <span className="text-zinc-600 line-through text-sm">
-                          {product.regularPrice}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 justify-items-center">
+            {filteredProducts.map((_, index) => (
+              <ProductCard key={index} />
+            ))}
           </div>
         </div>
       </section>

@@ -1,167 +1,218 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Product } from '@/lib/mockData';
+import { Heart, Printer } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
 
-interface ProductCardProps {
-  product: Product;
-}
-
-export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+export function ProductCard({ product }: { product?: any } = {}) {
+  const [selectedColor, setSelectedColor] = useState('OBSIDIAN BLACK');
+  const [selectedSize, setSelectedSize] = useState('L');
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const router = useRouter();
   const { addToCart } = useCart();
   const { showNotification } = useNotification();
-  const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
 
-  const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const title = product?.name || 'NEO-SHINJUKU GLITCH RUNNER';
+  const priceDisplay = product?.price
+    ? typeof product.price === 'string'
+      ? product.price
+      : `₹${product.price}`
+    : '$128.00';
+  const imageUrl =
+    product?.image?.sourceUrl ||
+    (typeof product?.image === 'string'
+      ? product.image
+      : 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=800&q=80');
+  const productUrl = product?.slug
+    ? `/products/${product.slug}`
+    : product?.id
+    ? `/products/${product.id}`
+    : '/';
+
+  const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    addToCart();
-    showNotification(`${product.name} added to cart!`);
-
-    // Create ripple effect inside button
-    const button = e.currentTarget;
-    const rect = button.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const id = Date.now();
-
-    setRipples((prev) => [...prev, { id, x, y }]);
-    setTimeout(() => {
-      setRipples((prev) => prev.filter((r) => r.id !== id));
-    }, 600);
+    const itemToAdd = {
+      id: product?.id || 'prod_1',
+      name: title,
+      price: product?.price
+        ? typeof product.price === 'string'
+          ? parseFloat(product.price.replace(/[^0-9.]/g, '')) || 128
+          : product.price
+        : 128,
+      size: selectedSize,
+      image: imageUrl,
+    };
+    addToCart(itemToAdd);
+    showNotification(`${title} (Size: ${selectedSize}) added to cart!`);
   };
 
-  const handleBuyNow = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleBuyNow = (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    addToCart();
-    showNotification(`Proceeding to checkout with ${product.name}!`);
-  };
-
-  // Render review stars based on rating
-  const renderStars = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-
-    for (let i = 1; i <= 5; i++) {
-      if (i <= fullStars) {
-        stars.push(<i key={i} className="fas fa-star text-yellow-400 text-[9px] sm:text-xs"></i>);
-      } else if (i === fullStars + 1 && hasHalfStar) {
-        stars.push(<i key={i} className="fas fa-star-half-alt text-yellow-400 text-[9px] sm:text-xs"></i>);
-      } else {
-        stars.push(<i key={i} className="far fa-star text-gray-600 text-[9px] sm:text-xs"></i>);
-      }
-    }
-    return stars;
+    const itemToAdd = {
+      id: product?.id || 'prod_1',
+      name: title,
+      price: product?.price
+        ? typeof product.price === 'string'
+          ? parseFloat(product.price.replace(/[^0-9.]/g, '')) || 128
+          : product.price
+        : 128,
+      size: selectedSize,
+      image: imageUrl,
+    };
+    addToCart(itemToAdd);
+    router.push('/account?tab=cart');
   };
 
   return (
-    <div className="product-card rounded-2xl overflow-hidden group">
-      <div className="relative overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={product.image.sourceUrl}
-          alt={product.image.altText || product.name}
-          className="w-full h-48 sm:h-64 md:h-80 lg:h-96 object-cover"
-        />
-        
-        {/* Sale / New Tags */}
-        <div className="absolute top-2 sm:top-4 right-2 sm:right-4 flex flex-col gap-1 sm:gap-2">
-          {product.onSale && (
-            <span className="bg-red-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-xs font-bold uppercase tracking-wider shadow">
-              Sale
-            </span>
-          )}
-          {product.isNew && (
-            <span className="bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-xs font-bold uppercase tracking-wider shadow">
-              New
-            </span>
-          )}
+    <article className="group relative bg-[#080a11]/85 backdrop-blur-xl border border-[#1b223c] hover:border-[#00f0ff]/80 transition-all duration-500 flex flex-col cyber-chamfer hover:shadow-[0_0_20px_-3px_rgba(0,240,255,0.45)] scanline-bg w-full max-w-sm text-slate-100">
+      <div className="flex justify-between items-center px-4 pt-3 pb-1 text-[10px] font-mono text-slate-500 uppercase tracking-widest border-b border-[#1b223c]/40">
+        <span className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 bg-[#00f0ff] inline-block"></span>SYS.REF // 884-XTR
+        </span>
+        <span className="text-[#00f0ff]/70 font-semibold">NEO_FABRIC // POD-01</span>
+      </div>
+      <div className="relative w-full aspect-[4/5] bg-gradient-to-b from-[#0c0f1d] to-[#080a11] overflow-hidden flex items-center justify-center">
+        <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start">
+          <span className="cyber-badge-clip bg-gradient-to-r from-[#00f0ff] to-blue-600 text-black font-bold text-xs uppercase px-2.5 py-1 tracking-wider shadow-md flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse"></span> NEW DROP
+          </span>
         </div>
-
-        {/* Hover Action Buttons Container */}
-        <div
-          className="add-to-cart absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 flex gap-1 sm:gap-2"
-          style={{ background: 'none' }}
+        <button
+          onClick={() => setIsWishlisted(!isWishlisted)}
+          className={`absolute top-3 right-3 z-20 w-9 h-9 flex items-center justify-center bg-black/70 border ${
+            isWishlisted
+              ? 'border-[#ff0055] text-[#ff0055]'
+              : 'border-slate-700/80 text-slate-400'
+          } hover:text-[#ff0055] hover:border-[#ff0055] transition-all backdrop-blur-md`}
         >
-          <button
-            onClick={handleAddToCart}
-            className="w-1/2 px-2 sm:px-4 py-2 sm:py-3 rounded-full text-white font-bold text-[9px] sm:text-xs uppercase tracking-wider cursor-pointer overflow-hidden flex items-center justify-center gap-1 sm:gap-1.5 transition-all duration-300 hover:scale-105"
-            style={{
-              background: 'linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%)',
-              boxShadow: '0 4px 15px rgba(6, 182, 212, 0.3)'
-            }}
-          >
-            <i className="fas fa-shopping-cart text-[9px] sm:text-xs"></i>
-            <span>Add to Cart</span>
-            
-            {/* Ripples */}
-            {ripples.map((ripple) => (
-              <span
-                key={ripple.id}
-                className="absolute bg-white/40 rounded-full animate-ripple pointer-events-none"
-                style={{
-                  left: ripple.x,
-                  top: ripple.y,
-                  width: '20px',
-                  height: '20px',
-                  transform: 'translate(-50%, -50%)',
-                  animation: 'ripple 0.6s ease-out forwards',
-                }}
-              />
-            ))}
-          </button>
-
-          <button
-            onClick={handleBuyNow}
-            className="w-1/2 px-2 sm:px-4 py-2 sm:py-3 rounded-full text-cyan-400 font-bold text-[9px] sm:text-xs uppercase tracking-wider cursor-pointer border border-cyan-400/50 bg-black/60 transition-all duration-300 hover:bg-cyan-500 hover:text-black hover:border-cyan-500 flex items-center justify-center gap-1 sm:gap-1.5"
-            style={{
-              boxShadow: '0 0 10px rgba(6, 182, 212, 0.3), inset 0 0 5px rgba(6, 182, 212, 0.2)',
-            }}
-          >
-            <i className="fas fa-bolt text-[9px] sm:text-xs"></i>
-            <span>Buy Now</span>
-          </button>
+          <Heart className="w-4 h-4" />
+        </button>
+        <Link
+          className="relative w-full h-full p-6 flex items-center justify-center cursor-pointer"
+          href={productUrl}
+        >
+          <img
+            src={imageUrl}
+            alt={title}
+            className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:opacity-0 group-hover:scale-105"
+          />
+          <img
+            src="https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&w=800&q=80"
+            alt="Back"
+            className="absolute inset-0 w-full h-full object-cover opacity-0 transition-all duration-700 group-hover:opacity-100 group-hover:scale-100"
+          />
+        </Link>
+        <div className="absolute bottom-2 right-2 text-[9px] font-mono text-slate-400 bg-black/80 px-2 py-0.5 border border-slate-800 backdrop-blur-sm z-10 flex items-center gap-1.5 pointer-events-none">
+          <Printer className="w-3 h-3 text-[#00f0ff]" /> DTG ULTRA-HD
         </div>
       </div>
-
-      <div className="p-3 sm:p-6">
-        <div className="flex justify-between items-start mb-1 sm:mb-2 gap-1">
-          <h3 className="text-xs sm:text-base md:text-xl font-bold text-white group-hover:text-cyan-400 transition-colors line-clamp-1">
-            {product.name}
-          </h3>
-          <button 
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              showNotification(`Added ${product.name} to wishlist!`);
-            }}
-            className="text-gray-400 hover:text-red-500 transition cursor-pointer shrink-0"
-          >
-            <i className="far fa-heart text-sm sm:text-lg md:text-xl"></i>
-          </button>
-        </div>
-        
-        <p className="text-gray-500 text-[10px] sm:text-sm mb-2 sm:mb-4 line-clamp-2">{product.shortDescription}</p>
-        
-        {/* Rating moved directly above the price tag */}
-        <div className="flex gap-0.5 sm:gap-1 mb-1.5 sm:mb-2">
-          {renderStars(product.averageRating)}
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-baseline gap-1 sm:gap-2 flex-wrap">
-            <span className="text-sm sm:text-lg md:text-2xl font-black neon-cyan orbitron">{product.price}</span>
-            {product.onSale && product.regularPrice && (
-              <span className="text-gray-500 line-through text-[10px] sm:text-sm">{product.regularPrice}</span>
-            )}
+      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+        <div>
+          <Link href={productUrl}>
+            <h2 className="text-xl font-bold uppercase tracking-wide text-white hover:text-[#00f0ff] transition-colors line-clamp-1 cursor-pointer">
+              {title}
+            </h2>
+          </Link>
+          <div className="mt-2.5 flex items-baseline justify-between">
+            <span className="text-2xl font-mono font-bold text-[#00f0ff] tracking-tight">
+              {priceDisplay}
+            </span>
+            <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5">
+              IN STOCK [POD]
+            </span>
           </div>
         </div>
+        <div className="space-y-3">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+                CHROMA COLORWAY:
+              </span>
+              <span className="text-[11px] font-mono text-[#00f0ff] font-semibold">
+                {selectedColor}
+              </span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => setSelectedColor('OBSIDIAN BLACK')}
+                className={`relative w-6 h-6 rounded-none transition-all hover:scale-110 focus:outline-none ${
+                  selectedColor === 'OBSIDIAN BLACK'
+                    ? 'border-2 ring-2 border-[#00f0ff] ring-[#00f0ff]/40'
+                    : 'border border-slate-700 hover:border-[#00f0ff]'
+                }`}
+              >
+                <span className="absolute inset-0.5 bg-[#0e1017]"></span>
+              </button>
+              <button
+                onClick={() => setSelectedColor('NEON CYAN')}
+                className={`relative w-6 h-6 rounded-none transition-all hover:scale-110 focus:outline-none ${
+                  selectedColor === 'NEON CYAN'
+                    ? 'border-2 ring-2 border-[#00f0ff] ring-[#00f0ff]/40'
+                    : 'border border-slate-700 hover:border-[#00f0ff]'
+                }`}
+              >
+                <span className="absolute inset-0.5 bg-gradient-to-br from-cyan-400 to-cyan-600"></span>
+              </button>
+              <button
+                onClick={() => setSelectedColor('ACID MAGENTA')}
+                className={`relative w-6 h-6 rounded-none transition-all hover:scale-110 focus:outline-none ${
+                  selectedColor === 'ACID MAGENTA'
+                    ? 'border-2 ring-2 border-[#00f0ff] ring-[#00f0ff]/40'
+                    : 'border border-slate-700 hover:border-[#00f0ff]'
+                }`}
+              >
+                <span className="absolute inset-0.5 bg-gradient-to-br from-pink-500 to-rose-700"></span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1.5 block">
+              FIT PROFILE:
+            </span>
+            <div className="grid grid-cols-5 gap-1.5 text-xs font-mono font-medium">
+              {['S', 'M', 'L', 'XL', '2XL'].map((size) => (
+                <button
+                  key={size}
+                  onClick={() => setSelectedSize(size)}
+                  className={`py-1.5 text-center transition-colors focus:outline-none ${
+                    selectedSize === size
+                      ? 'border border-[#00f0ff] bg-[#00f0ff]/15 text-[#00f0ff] font-bold shadow-[0_0_8px_rgba(0,240,255,0.3)]'
+                      : 'border border-[#1b223c] hover:border-[#00f0ff] hover:text-[#00f0ff] bg-[#0c0f1d]/60'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="pt-2 flex gap-2">
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            className="flex-1 py-3 px-3 text-xs md:text-sm font-bold uppercase tracking-wider transition-all duration-300 border border-green-500 text-green-500 hover:bg-green-500 hover:text-black flex items-center justify-center rounded-none cursor-pointer"
+          >
+            ADD TO CART
+          </button>
+          <button
+            type="button"
+            onClick={handleBuyNow}
+            className="flex-1 py-3 px-3 text-xs md:text-sm font-bold uppercase tracking-wider transition-all duration-300 bg-green-500 text-black font-bold hover:bg-green-400 flex items-center justify-center rounded-none cursor-pointer"
+          >
+            BUY NOW
+          </button>
+        </div>
       </div>
-    </div>
+      <div className="bg-black/80 px-4 py-2 border-t border-[#1b223c] flex items-center justify-between text-[10px] font-mono text-slate-500 mt-auto">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#00f0ff]"></span>
+          POD READY: 48H CRAFTING
+        </span>
+        <span className="text-slate-400">GLOBAL_SHIP // SECURE</span>
+      </div>
+    </article>
   );
-};
-export default ProductCard;
+}

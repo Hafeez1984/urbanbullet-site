@@ -133,13 +133,13 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Header Action Buttons */}
         <div className="flex justify-end items-center space-x-6 flex-shrink-0">
-          <Link 
-            href="/account"
+          <button 
+            onClick={() => router.push('/account')}
             className="text-gray-300 hover:text-white transition-colors duration-200 cursor-pointer"
             aria-label="My Account"
           >
             <i className="fas fa-user text-xl"></i>
-          </Link>
+          </button>
 
           <button 
             onClick={handleCartClick}

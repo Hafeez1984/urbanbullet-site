@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export interface CartItem {
   id: string;
@@ -23,32 +23,33 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: 'prod_1',
-      name: 'Cyber Hoodie',
-      price: 89.99,
-      quantity: 1,
-      size: 'M',
-      image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&q=80',
-    },
-    {
-      id: 'prod_2',
-      name: 'Neon Dreams Tee',
-      price: 49.99,
-      quantity: 1,
-      size: 'L',
-      image: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=600&q=80',
-    },
-    {
-      id: 'prod_5',
-      name: 'Graphic Crew Neck',
-      price: 44.99,
-      quantity: 1,
-      size: 'XL',
-      image: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=600&q=80',
-    },
-  ]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Read cart state from localStorage on initial mount
+  useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem('cartItems');
+      if (savedCart) {
+        setCartItems(JSON.parse(savedCart));
+      }
+    } catch (error) {
+      console.error('Failed to load cart from localStorage:', error);
+    } finally {
+      setIsLoaded(true);
+    }
+  }, []);
+
+  // Write cart state to localStorage whenever cart items change
+  useEffect(() => {
+    if (isLoaded) {
+      try {
+        localStorage.setItem('cartItems', JSON.stringify(cartItems));
+      } catch (error) {
+        console.error('Failed to save cart to localStorage:', error);
+      }
+    }
+  }, [cartItems, isLoaded]);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
