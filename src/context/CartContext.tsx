@@ -8,6 +8,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   size?: string;
+  color?: string;
   image?: string;
 }
 
@@ -73,8 +74,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             name: product.name,
             price: numericPrice,
             quantity: 1,
-            size: 'M',
-            image: product.image?.sourceUrl || '',
+            size: product.size || 'M',
+            color: product.color || 'Black',
+            image: product.image?.sourceUrl || (typeof product.image === 'string' ? product.image : ''),
           },
         ];
       });
@@ -95,6 +97,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             price: 89.99,
             quantity: 1,
             size: 'M',
+            color: 'Black',
             image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&q=80',
           },
         ];
