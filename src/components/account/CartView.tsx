@@ -49,7 +49,7 @@ export default function CartView({ icons }: CartViewProps) {
             <table>
               <thead>
                 <tr>
-                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">PRODUCT</th>
+                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">ITEM</th>
                   <th className="text-center py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">PRICE</th>
                   <th className="text-center py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">QUANTITY</th>
                   <th className="text-center py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">TOTAL</th>
