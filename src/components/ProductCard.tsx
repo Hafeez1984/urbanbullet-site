@@ -43,6 +43,7 @@ export function ProductCard({ product }: { product?: any } = {}) {
           : product.price
         : 128,
       size: selectedSize,
+      color: selectedColor,
       image: imageUrl,
     };
     addToCart(itemToAdd);
@@ -60,6 +61,7 @@ export function ProductCard({ product }: { product?: any } = {}) {
           : product.price
         : 128,
       size: selectedSize,
+      color: selectedColor,
       image: imageUrl,
     };
     addToCart(itemToAdd);

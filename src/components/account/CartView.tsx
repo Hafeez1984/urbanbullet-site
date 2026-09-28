@@ -49,40 +49,36 @@ export default function CartView({ icons }: CartViewProps) {
             <table>
               <thead>
                 <tr>
-                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">Item</th>
-                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">Price</th>
-                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">Quantity</th>
-                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">Total</th>
-                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">Action</th>
+                  <th className="text-left py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">PRODUCT</th>
+                  <th className="text-center py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">PRICE</th>
+                  <th className="text-center py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">QUANTITY</th>
+                  <th className="text-center py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">TOTAL</th>
+                  <th className="text-center py-4 px-2 text-sm text-gray-400 font-medium uppercase tracking-wider border-b border-gray-800">ACTION</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id}>
-                    <td className="py-6 px-2 border-b border-gray-900/50">
-                      <div className="flex items-center gap-4 py-2">
-                        {item.image && (
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-16 h-16 object-cover rounded-lg border border-[rgba(6,182,212,0.3)] shadow-[0_0_10px_rgba(6,182,212,0.1)] flex-shrink-0"
-                          />
-                        )}
-                        <div>
-                          <strong className="block text-white font-semibold tracking-wide">
+                    <td className="py-6 px-2 border-b border-gray-900/50 text-left">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={item.image || 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&q=80'}
+                          alt={item.name}
+                          className="w-20 h-20 object-cover rounded-lg border border-white/10 flex-shrink-0 shadow-sm"
+                        />
+                        <div className="flex flex-col">
+                          <strong className="text-white font-bold tracking-wide">
                             {item.name}
                           </strong>
-                          {item.size && (
-                            <span className="text-xs text-[var(--cyan)] uppercase tracking-widest font-mono">
-                              Size: {item.size}
-                            </span>
-                          )}
+                          <span className="text-sm text-gray-400 mt-1">
+                            Color: {item.color || 'Black'} | Size: {item.size || 'M'}
+                          </span>
                         </div>
                       </div>
                     </td>
-                    <td className="py-6 px-2 border-b border-gray-900/50 font-mono">₹{item.price.toFixed(2)}</td>
-                    <td className="py-6 px-2 border-b border-gray-900/50">
-                      <div className="flex items-center gap-2">
+                    <td className="py-6 px-2 border-b border-gray-900/50 text-center font-mono">₹{item.price.toFixed(2)}</td>
+                    <td className="py-6 px-2 border-b border-gray-900/50 text-center">
+                      <div className="flex items-center justify-center gap-2">
                         <button
                           type="button"
                           className="w-8 h-8 rounded border border-white/10 hover:border-[var(--cyan)] hover:bg-[rgba(6,182,212,0.1)] flex items-center justify-center text-sm transition"
@@ -102,12 +98,12 @@ export default function CartView({ icons }: CartViewProps) {
                         </button>
                       </div>
                     </td>
-                    <td className="py-6 px-2 border-b border-gray-900/50 font-mono text-[var(--cyan)] font-semibold">
+                    <td className="py-6 px-2 border-b border-gray-900/50 text-center font-mono text-[var(--cyan)] font-semibold">
                       ₹{(item.price * item.quantity).toFixed(2)}
                     </td>
-                    <td className="py-6 px-2 border-b border-gray-900/50">
+                    <td className="py-6 px-2 border-b border-gray-900/50 text-center">
                       <button
-                        className="link-action font-mono text-[var(--danger)] hover:text-red-500 transition-colors"
+                        className="link-action font-mono text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
                         type="button"
                         onClick={() => removeFromCart(item.id)}
                       >
