@@ -3,7 +3,6 @@ name: Deploy Next.js to Oracle VPS
 on:
   push:
     branches:
-      - main
       - dev
 
 jobs:
