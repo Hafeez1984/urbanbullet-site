@@ -29,6 +29,7 @@ const isStatic = getStaticExportFlag();
 const routesToSwap = [
   path.join(__dirname, '..', 'src', 'app', 'api', 'auth', '[...nextauth]'),
   path.join(__dirname, '..', 'src', 'app', 'api', 'auth', 'reset-password'),
+  path.join(__dirname, '..', 'src', 'app', 'api', 'account'),
 ];
 
 console.log(`[Prebuild] Detected NEXT_PUBLIC_STATIC_EXPORT = ${isStatic}`);
