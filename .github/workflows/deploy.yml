@@ -23,6 +23,8 @@ jobs:
 
       - name: 🛠️ Build Static Frontend
         run: npm run build
+        env:
+          NEXT_PUBLIC_STATIC_EXPORT: 'true'
 
       - name: 🚀 Push to Hostinger via Secure Copy
         uses: appleboy/scp-action@v0.1.7
