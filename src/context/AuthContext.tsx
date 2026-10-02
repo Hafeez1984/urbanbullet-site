@@ -40,23 +40,6 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    const isStatic = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
-    if (isStatic) {
-      const storedUser = localStorage.getItem('ub_user');
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (e) {
-          console.error("Failed to parse stored user", e);
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-      setIsLoading(false);
-      return;
-    }
-
     // Safety timeout: maximum 3.5 seconds for session loading state
     const safetyTimer = setTimeout(() => {
       setIsLoading(false);
@@ -77,7 +60,7 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
       const lastName = nameParts.slice(1).join(' ') || 'User';
       const initials = (firstName.substring(0, 1) + lastName.substring(0, 1)).toUpperCase();
 
-      setUser({
+      const userObj: User = {
         firstName,
         lastName,
         displayName: name,
@@ -85,7 +68,9 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
         phone: '',
         memberSince: new Date().getFullYear().toString(),
         avatarInitials: initials || 'GU',
-      });
+      };
+      setUser(userObj);
+      localStorage.setItem('ub_user', JSON.stringify(userObj));
     } else {
       const storedUser = localStorage.getItem('ub_user');
       if (storedUser) {
@@ -256,8 +241,9 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const basePath = process.env.NEXT_PUBLIC_AUTH_URL;
   return (
-    <SessionProvider>
+    <SessionProvider basePath={basePath}>
       <AuthContextInternal>
         {children}
       </AuthContextInternal>

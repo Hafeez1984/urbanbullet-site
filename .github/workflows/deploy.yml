@@ -25,6 +25,7 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_STATIC_EXPORT: 'true'
+          NEXT_PUBLIC_AUTH_URL: 'https://dev.urbanbullet.in/api/auth'
 
       - name: 🚀 Push to Hostinger via Secure Copy
         uses: appleboy/scp-action@v0.1.7
