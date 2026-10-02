@@ -3,25 +3,29 @@ const path = require('path');
 
 function getStaticExportFlag() {
   // 1. Check process.env first
-  if (process.env.NEXT_PUBLIC_STATIC_EXPORT) {
+  if (process.env.NEXT_PUBLIC_STATIC_EXPORT !== undefined) {
     return process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
   }
 
-  // 2. Fall back to parsing .env.local file
-  const envLocalPath = path.join(__dirname, '..', '.env.local');
-  if (fs.existsSync(envLocalPath)) {
-    try {
-      const content = fs.readFileSync(envLocalPath, 'utf8');
-      const match = content.match(/^NEXT_PUBLIC_STATIC_EXPORT\s*=\s*["']?(true|false)["']?/m);
-      if (match) {
-        return match[1] === 'true';
+  // 2. Fall back to parsing .env files (.env, .env.local, .env.production)
+  const envFiles = ['.env', '.env.local', '.env.production'];
+  for (const file of envFiles) {
+    const envPath = path.join(__dirname, '..', file);
+    if (fs.existsSync(envPath)) {
+      try {
+        const content = fs.readFileSync(envPath, 'utf8');
+        const match = content.match(/^NEXT_PUBLIC_STATIC_EXPORT\s*=\s*["']?(true|false)["']?/m);
+        if (match) {
+          return match[1] === 'true';
+        }
+      } catch (err) {
+        console.error(`[Prebuild] Failed to read or parse ${file}:`, err);
       }
-    } catch (err) {
-      console.error('[Prebuild] Failed to read or parse .env.local:', err);
     }
   }
 
-  return false;
+  // 3. Default to true (static export mode) since next.config output is 'export'
+  return true;
 }
 
 const isStatic = getStaticExportFlag();
@@ -29,6 +33,7 @@ const isStatic = getStaticExportFlag();
 const routesToSwap = [
   path.join(__dirname, '..', 'src', 'app', 'api', 'auth', '[...nextauth]'),
   path.join(__dirname, '..', 'src', 'app', 'api', 'auth', 'reset-password'),
+  path.join(__dirname, '..', 'src', 'app', 'api', 'account'),
 ];
 
 console.log(`[Prebuild] Detected NEXT_PUBLIC_STATIC_EXPORT = ${isStatic}`);
@@ -50,4 +55,3 @@ for (const targetDir of routesToSwap) {
     process.exit(1);
   }
 }
-
