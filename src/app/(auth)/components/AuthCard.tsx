@@ -13,10 +13,17 @@ export default function AuthCard() {
 
   const isLogin = mode === 'login';
 
+  const getCallbackUrl = () => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/account`;
+    }
+    return 'https://urbanbullet.in/account';
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    signIn('email', { email, callbackUrl: '/account' });
+    signIn('email', { email, callbackUrl: getCallbackUrl() });
   };
 
   return (
@@ -60,7 +67,7 @@ export default function AuthCard() {
             {/* Google OAuth — NextAuth */}
             <button
               type="button"
-              onClick={() => signIn('google', { callbackUrl: '/account' })}
+              onClick={() => signIn('google', { callbackUrl: getCallbackUrl() })}
               className="group flex w-full items-center justify-center gap-3 border border-white/15 bg-white/[0.04] px-4 py-3.5 text-[13px] font-semibold text-zinc-100 transition hover:border-[#D4FF3F]/50 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4FF3F]/60"
             >
               <svg className="h-[18px] w-[18px]" viewBox="0 0 48 48" aria-hidden="true">
