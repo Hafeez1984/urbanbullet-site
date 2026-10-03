@@ -1,103 +1,43 @@
 import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import CredentialsProvider from "next-auth/providers/credentials";
+import { authOptions } from "@/lib/authOptions";
+import { NextResponse } from "next/server";
 
-export const dynamic = "force-static";
+export const dynamic = 'force-dynamic';
 
-export function generateStaticParams() {
-  return [
-    { nextauth: ["signin"] },
-    { nextauth: ["signout"] },
-    { nextauth: ["session"] },
-    { nextauth: ["providers"] },
-    { nextauth: ["csrf"] },
-    { nextauth: ["callback"] }
+const handler = NextAuth(authOptions);
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin") || "https://urbanbullet.in";
+  const allowedOrigins = [
+    "https://urbanbullet.in",
+    "https://dev.urbanbullet.in",
+    "http://localhost:3000",
   ];
+  const isAllowed = allowedOrigins.includes(origin) || origin.endsWith(".urbanbullet.in");
+  const allowOrigin = isAllowed ? origin : "https://urbanbullet.in";
+
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Cookie",
+  };
 }
 
-console.log("[NextAuth Route] Init. NEXTAUTH_URL:", process.env.NEXTAUTH_URL, "Secret exists:", !!process.env.NEXTAUTH_SECRET);
+export async function OPTIONS(req: Request) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: getCorsHeaders(req),
+  });
+}
 
-const handler = NextAuth({
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      authorization: {
-        params: {
-          prompt: "select_account",
-        },
-      },
-    }),
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-        firstName: { label: "First Name", type: "text" },
-        lastName: { label: "Last Name", type: "text" },
-        isSignup: { label: "Is Signup", type: "text" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+async function handleRequest(req: Request, ctx: any) {
+  const res = await handler(req, ctx);
+  const corsHeaders = getCorsHeaders(req);
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    res.headers.set(key, value);
+  });
+  return res;
+}
 
-        const email = credentials.email.toLowerCase();
-        const password = credentials.password;
-
-        // Custom Sign Up flow simulation
-        if (credentials.isSignup === "true") {
-          const firstName = credentials.firstName || "New";
-          const lastName = credentials.lastName || "User";
-          return {
-            id: email,
-            name: `${firstName} ${lastName}`,
-            email: email,
-          };
-        }
-
-        if (email === "alex@streetrevolution.com") {
-          return {
-            id: "alex-rider",
-            name: "Alex Rider",
-            email: "alex@streetrevolution.com",
-          };
-        }
-
-        if (email.includes("@") && password.length >= 6) {
-          const displayName = email.split("@")[0];
-          const capitalized = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-          return {
-            id: email,
-            name: `${capitalized} User`,
-            email: email,
-          };
-        }
-
-        return null;
-      },
-    }),
-  ],
-  session: {
-    strategy: "jwt",
-  },
-  secret: process.env.NEXTAUTH_SECRET,
-  // @ts-ignore
-  trustHost: true,
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        (session.user as any).id = token.id;
-      }
-      return session;
-    },
-  },
-});
-
-export { handler as GET, handler as POST };
+export { handleRequest as GET, handleRequest as POST };

@@ -2,7 +2,17 @@ import { AuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-const cookieDomain = process.env.NEXTAUTH_COOKIE_DOMAIN || ".urbanbullet.in";
+const getCookieDomain = () => {
+  if (process.env.NEXTAUTH_COOKIE_DOMAIN) {
+    return process.env.NEXTAUTH_COOKIE_DOMAIN;
+  }
+  if (process.env.NEXTAUTH_URL && process.env.NEXTAUTH_URL.includes("urbanbullet.in")) {
+    return ".urbanbullet.in";
+  }
+  return undefined;
+};
+
+const cookieDomain = getCookieDomain();
 const useSecure = process.env.NODE_ENV === "production" || process.env.NEXTAUTH_URL?.startsWith("https://");
 
 export const authOptions: AuthOptions = {
@@ -140,7 +150,7 @@ export const authOptions: AuthOptions = {
   callbacks: {
     async redirect({ url, baseUrl }) {
       if (url.startsWith("/")) {
-        return `https://urbanbullet.in${url}`;
+        return `${baseUrl}${url}`;
       }
       try {
         const parsedUrl = new URL(url);
@@ -154,7 +164,7 @@ export const authOptions: AuthOptions = {
       } catch (e) {
         // Fallback
       }
-      return "https://urbanbullet.in/account";
+      return `${baseUrl}/account`;
     },
     async jwt({ token, user }: any) {
       if (user) {

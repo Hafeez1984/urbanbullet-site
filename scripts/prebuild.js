@@ -3,6 +3,9 @@ const path = require('path');
 
 function getStaticExportFlag() {
   // 1. Check process.env first
+  if (process.env.STATIC_EXPORT !== undefined) {
+    return process.env.STATIC_EXPORT === 'true';
+  }
   if (process.env.NEXT_PUBLIC_STATIC_EXPORT !== undefined) {
     return process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
   }
@@ -14,7 +17,7 @@ function getStaticExportFlag() {
     if (fs.existsSync(envPath)) {
       try {
         const content = fs.readFileSync(envPath, 'utf8');
-        const match = content.match(/^NEXT_PUBLIC_STATIC_EXPORT\s*=\s*["']?(true|false)["']?/m);
+        const match = content.match(/^(?:NEXT_PUBLIC_)?STATIC_EXPORT\s*=\s*["']?(true|false)["']?/m);
         if (match) {
           return match[1] === 'true';
         }
@@ -24,8 +27,8 @@ function getStaticExportFlag() {
     }
   }
 
-  // 3. Default to true (static export mode) since next.config output is 'export'
-  return true;
+  // 3. Default to false (Node server backend mode)
+  return false;
 }
 
 const isStatic = getStaticExportFlag();
