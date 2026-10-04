@@ -97,7 +97,7 @@ function AccountContent() {
     );
   }
 
-  if (!session?.user) {
+  if (status === 'unauthenticated' || !session?.user) {
     return <AuthCard />;
   }
 
