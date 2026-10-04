@@ -97,9 +97,9 @@ export const authOptions: AuthOptions = {
     callbackUrl: {
       name: useSecure ? `__Secure-next-auth.callback-url` : `next-auth.callback-url`,
       options: {
-        sameSite: "lax",
+        sameSite: "none",
         path: "/",
-        secure: useSecure,
+        secure: true,
         domain: cookieDomain,
       },
     },
@@ -107,9 +107,9 @@ export const authOptions: AuthOptions = {
       name: useSecure ? `__Secure-next-auth.csrf-token` : `next-auth.csrf-token`,
       options: {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: "none",
         path: "/",
-        secure: useSecure,
+        secure: true,
         domain: cookieDomain,
       },
     },
