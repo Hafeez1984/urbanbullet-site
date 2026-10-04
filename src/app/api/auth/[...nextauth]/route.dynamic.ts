@@ -32,12 +32,30 @@ export async function OPTIONS(req: Request) {
 }
 
 async function handleRequest(req: Request, ctx: any) {
-  const res = await handler(req, ctx);
-  const corsHeaders = getCorsHeaders(req);
-  Object.entries(corsHeaders).forEach(([key, value]) => {
-    res.headers.set(key, value);
-  });
-  return res;
+  try {
+    const res = await handler(req, ctx);
+    const corsHeaders = getCorsHeaders(req);
+
+    // If this is a session check request and NextAuth returned a redirect (30x),
+    // return 200 OK with empty session `{}` so client next-auth/react does not trigger a window redirect.
+    const url = new URL(req.url);
+    if (url.pathname.endsWith('/session') && res.status >= 300 && res.status < 400) {
+      return NextResponse.json({}, { status: 200, headers: corsHeaders });
+    }
+
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      res.headers.set(key, value);
+    });
+    return res;
+  } catch (error) {
+    console.error("NextAuth route error:", error);
+    const corsHeaders = getCorsHeaders(req);
+    const url = new URL(req.url);
+    if (url.pathname.endsWith('/session')) {
+      return NextResponse.json({}, { status: 200, headers: corsHeaders });
+    }
+    return NextResponse.json({ error: "Internal Auth Error" }, { status: 500, headers: corsHeaders });
+  }
 }
 
 export { handleRequest as GET, handleRequest as POST };
