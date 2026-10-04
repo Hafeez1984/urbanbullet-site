@@ -64,10 +64,13 @@ export default function AuthCard() {
               <span className="font-mono text-[10px] text-zinc-600">/01</span>
             </div>
 
-            {/* Google OAuth — NextAuth */}
+            {/* Google OAuth — Redirect to Auth Gateway */}
             <button
               type="button"
-              onClick={() => signIn('google', { callbackUrl: getCallbackUrl() })}
+              onClick={() => {
+                const targetOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://urbanbullet.in';
+                window.location.href = 'https://dev.urbanbullet.in/auth-gateway?callbackUrl=' + encodeURIComponent(targetOrigin + '/account');
+              }}
               className="group flex w-full items-center justify-center gap-3 border border-white/15 bg-white/[0.04] px-4 py-3.5 text-[13px] font-semibold text-zinc-100 transition hover:border-[#D4FF3F]/50 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4FF3F]/60"
             >
               <svg className="h-[18px] w-[18px]" viewBox="0 0 48 48" aria-hidden="true">
