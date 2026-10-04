@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import AuthProvider from '@/components/SessionProvider';
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { NotificationProvider } from "@/context/NotificationContext";
@@ -26,15 +25,13 @@ export default function RootLayout({
         <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body className="gradient-bg min-h-screen text-white antialiased">
-        <AuthProvider>
-          <CustomAuthProvider>
-            <CartProvider>
-              <NotificationProvider>
-                {children}
-              </NotificationProvider>
-            </CartProvider>
-          </CustomAuthProvider>
-        </AuthProvider>
+        <CustomAuthProvider>
+          <CartProvider>
+            <NotificationProvider>
+              {children}
+            </NotificationProvider>
+          </CartProvider>
+        </CustomAuthProvider>
       </body>
     </html>
   );
