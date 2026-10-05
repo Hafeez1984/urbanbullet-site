@@ -89,29 +89,29 @@ export const authOptions: AuthOptions & { trustHost?: boolean } = {
       name: useSecure ? `__Secure-next-auth.session-token` : `next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: "none",
+        sameSite: "lax",
         path: "/",
-        secure: true,
-        domain: ".urbanbullet.in",
+        secure: useSecure,
+        domain: cookieDomain,
       },
     },
     callbackUrl: {
       name: useSecure ? `__Secure-next-auth.callback-url` : `next-auth.callback-url`,
       options: {
-        sameSite: "none",
+        sameSite: "lax",
         path: "/",
-        secure: true,
-        domain: ".urbanbullet.in",
+        secure: useSecure,
+        domain: cookieDomain,
       },
     },
     csrfToken: {
       name: useSecure ? `__Secure-next-auth.csrf-token` : `next-auth.csrf-token`,
       options: {
         httpOnly: true,
-        sameSite: "none",
+        sameSite: "lax",
         path: "/",
-        secure: true,
-        domain: ".urbanbullet.in",
+        secure: useSecure,
+        domain: cookieDomain,
       },
     },
     pkceCodeVerifier: {
@@ -150,22 +150,9 @@ export const authOptions: AuthOptions & { trustHost?: boolean } = {
   trustHost: true,
   callbacks: {
     async redirect({ url, baseUrl }) {
-      if (url.startsWith("https://urbanbullet.in")) return url;
-      if (url === "/account" || url.endsWith("/account") || url === baseUrl || url === `${baseUrl}/` || url === `${baseUrl}/account`) {
-        return "https://urbanbullet.in/account";
-      }
-      if (url.startsWith("/")) {
-        return `https://urbanbullet.in${url}`;
-      }
-      try {
-        const parsed = new URL(url);
-        if (parsed.hostname === "urbanbullet.in" || parsed.hostname.endsWith(".urbanbullet.in")) {
-          return url;
-        }
-      } catch (e) {
-        // Fallthrough
-      }
-      return "https://urbanbullet.in/account";
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
     async jwt({ token, user }: any) {
       if (user) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { signIn } from 'next-auth/react';
 
 type Mode = 'login' | 'signup';
 
@@ -15,7 +16,7 @@ export default function AuthCard() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    window.location.href = 'https://dev.urbanbullet.in/auth-gateway?callbackUrl=https://urbanbullet.in/account';
+    signIn('credentials', { email, callbackUrl: '/account' });
   };
 
   return (
@@ -56,12 +57,10 @@ export default function AuthCard() {
               <span className="font-mono text-[10px] text-zinc-600">/01</span>
             </div>
 
-            {/* Google OAuth — Pure Browser Navigation */}
+            {/* Google OAuth — Native NextAuth signIn */}
             <button
               type="button"
-              onClick={() => {
-                window.location.href = 'https://dev.urbanbullet.in/auth-gateway?callbackUrl=https://urbanbullet.in/account';
-              }}
+              onClick={() => signIn('google', { callbackUrl: '/account' })}
               className="group flex w-full items-center justify-center gap-3 border border-white/15 bg-white/[0.04] px-4 py-3.5 text-[13px] font-semibold text-zinc-100 transition hover:border-[#D4FF3F]/50 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4FF3F]/60"
             >
               <svg className="h-[18px] w-[18px]" viewBox="0 0 48 48" aria-hidden="true">
