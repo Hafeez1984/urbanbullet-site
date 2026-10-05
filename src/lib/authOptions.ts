@@ -15,8 +15,9 @@ const getCookieDomain = () => {
 const cookieDomain = getCookieDomain();
 const useSecure = process.env.NODE_ENV === "production" || process.env.NEXTAUTH_URL?.startsWith("https://");
 
-export const authOptions: AuthOptions = {
+export const authOptions: AuthOptions & { trustHost?: boolean } = {
   debug: true,
+  trustHost: true,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
