@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
 
 type Mode = 'login' | 'signup';
 
@@ -13,17 +12,10 @@ export default function AuthCard() {
 
   const isLogin = mode === 'login';
 
-  const getCallbackUrl = () => {
-    if (typeof window !== 'undefined') {
-      return `${window.location.origin}/account`;
-    }
-    return 'https://urbanbullet.in/account';
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    signIn('email', { email, callbackUrl: getCallbackUrl() });
+    window.location.href = 'https://dev.urbanbullet.in/auth-gateway?callbackUrl=https://urbanbullet.in/account';
   };
 
   return (
@@ -64,12 +56,11 @@ export default function AuthCard() {
               <span className="font-mono text-[10px] text-zinc-600">/01</span>
             </div>
 
-            {/* Google OAuth — Redirect to Auth Gateway */}
+            {/* Google OAuth — Pure Browser Navigation */}
             <button
               type="button"
               onClick={() => {
-                const targetOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://urbanbullet.in';
-                window.location.href = 'https://dev.urbanbullet.in/auth-gateway?callbackUrl=' + encodeURIComponent(targetOrigin + '/account');
+                window.location.href = 'https://dev.urbanbullet.in/auth-gateway?callbackUrl=https://urbanbullet.in/account';
               }}
               className="group flex w-full items-center justify-center gap-3 border border-white/15 bg-white/[0.04] px-4 py-3.5 text-[13px] font-semibold text-zinc-100 transition hover:border-[#D4FF3F]/50 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4FF3F]/60"
             >

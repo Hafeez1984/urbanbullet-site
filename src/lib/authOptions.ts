@@ -150,22 +150,10 @@ export const authOptions: AuthOptions & { trustHost?: boolean } = {
   trustHost: true,
   callbacks: {
     async redirect({ url, baseUrl }) {
-      if (url.startsWith("/")) {
-        return `${baseUrl}${url}`;
-      }
-      try {
-        const parsedUrl = new URL(url);
-        if (
-          parsedUrl.hostname === "urbanbullet.in" ||
-          parsedUrl.hostname.endsWith(".urbanbullet.in") ||
-          parsedUrl.origin === baseUrl
-        ) {
-          return url;
-        }
-      } catch (e) {
-        // Fallback
-      }
-      return `${baseUrl}/account`;
+      if (url.startsWith("https://urbanbullet.in")) return url;
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
     async jwt({ token, user }: any) {
       if (user) {
