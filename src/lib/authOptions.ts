@@ -151,9 +151,21 @@ export const authOptions: AuthOptions & { trustHost?: boolean } = {
   callbacks: {
     async redirect({ url, baseUrl }) {
       if (url.startsWith("https://urbanbullet.in")) return url;
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      else if (new URL(url).origin === baseUrl) return url;
-      return baseUrl;
+      if (url === "/account" || url.endsWith("/account") || url === baseUrl || url === `${baseUrl}/` || url === `${baseUrl}/account`) {
+        return "https://urbanbullet.in/account";
+      }
+      if (url.startsWith("/")) {
+        return `https://urbanbullet.in${url}`;
+      }
+      try {
+        const parsed = new URL(url);
+        if (parsed.hostname === "urbanbullet.in" || parsed.hostname.endsWith(".urbanbullet.in")) {
+          return url;
+        }
+      } catch (e) {
+        // Fallthrough
+      }
+      return "https://urbanbullet.in/account";
     },
     async jwt({ token, user }: any) {
       if (user) {
