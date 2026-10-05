@@ -9,7 +9,10 @@ function AuthGatewayContent() {
   const formRef = useRef<HTMLFormElement>(null);
   const submittedRef = useRef<boolean>(false);
 
-  const callbackUrl = searchParams.get('callbackUrl') || 'https://urbanbullet.in/account';
+  const rawCallback = searchParams.get('callbackUrl');
+  const callbackUrl = rawCallback && rawCallback.startsWith('https://urbanbullet.in')
+    ? rawCallback
+    : 'https://urbanbullet.in/account';
 
   useEffect(() => {
     fetch('/api/auth/csrf')
