@@ -88,10 +88,10 @@ export const authOptions: AuthOptions = {
       name: useSecure ? `__Secure-next-auth.session-token` : `next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: "none",
         path: "/",
-        secure: useSecure,
-        domain: cookieDomain,
+        secure: true,
+        domain: ".urbanbullet.in",
       },
     },
     callbackUrl: {
@@ -100,7 +100,7 @@ export const authOptions: AuthOptions = {
         sameSite: "none",
         path: "/",
         secure: true,
-        domain: cookieDomain,
+        domain: ".urbanbullet.in",
       },
     },
     csrfToken: {
@@ -110,7 +110,7 @@ export const authOptions: AuthOptions = {
         sameSite: "none",
         path: "/",
         secure: true,
-        domain: cookieDomain,
+        domain: ".urbanbullet.in",
       },
     },
     pkceCodeVerifier: {
