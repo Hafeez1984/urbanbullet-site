@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
-import { useCart, CartItem } from '@/context/CartContext';
+import React, { useState } from 'react';
+import { useCart } from '@/context/CartContext';
 import { useNotification } from '@/context/NotificationContext';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 interface CartViewProps {
   icons: {
@@ -10,9 +12,31 @@ interface CartViewProps {
   };
 }
 
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') {
+      resolve(false);
+      return;
+    }
+    if ((window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 export default function CartView({ icons }: CartViewProps) {
   const { cartItems, updateQuantity, removeFromCart, clearCart } = useCart();
   const { showNotification } = useNotification();
+  const { data: session } = useSession();
+  const router = useRouter();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const items = cartItems || [];
 
@@ -24,9 +48,106 @@ export default function CartView({ icons }: CartViewProps) {
   const tax = subtotal * 0.08; // 8% tax
   const total = subtotal + shipping + tax;
 
-  const handleCheckout = () => {
-    showNotification('Initializing secure quantum checkout sequence...');
-    // We could clear the cart or just show a notification.
+  const handleCheckout = async () => {
+    if (total <= 0) {
+      showNotification('Cart total must be greater than zero.');
+      return;
+    }
+
+    setIsProcessing(true);
+    showNotification('Initializing secure Razorpay checkout...');
+
+    try {
+      // 1. Load Razorpay SDK on demand
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        showNotification('Failed to load Razorpay SDK. Please check your connection.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // 2. Create Razorpay order via backend route
+      const createRes = await fetch('/api/razorpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: total,
+          currency: 'INR',
+        }),
+      });
+
+      const orderData = await createRes.json();
+      if (!createRes.ok || orderData.error) {
+        showNotification(orderData.error || 'Failed to create Razorpay order.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // 3. Configure and launch Razorpay checkout modal
+      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_Tl4C0LdtWC1ZVC';
+      const options = {
+        key: razorpayKey,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Urban Bullet',
+        description: 'Headless Checkout Order',
+        order_id: orderData.order_id,
+        handler: async function (response: any) {
+          showNotification('Verifying payment signature...');
+          try {
+            const verifyRes = await fetch('/api/razorpay/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                cart_items: items,
+                email: session?.user?.email || undefined,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyRes.ok && verifyData.success) {
+              clearCart();
+              showNotification('Payment successful! Your order has been placed.');
+              router.push('/account?tab=orders');
+            } else {
+              showNotification(verifyData.error || 'Payment verification failed.');
+            }
+          } catch (err: any) {
+            console.error('Error during signature verification:', err);
+            showNotification('Payment verification request failed.');
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false);
+            showNotification('Checkout session cancelled.');
+          },
+        },
+        prefill: {
+          name: session?.user?.name || '',
+          email: session?.user?.email || '',
+        },
+        theme: {
+          color: '#06b6d4',
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (resp: any) {
+        setIsProcessing(false);
+        showNotification(`Payment failed: ${resp?.error?.description || 'Transaction failed'}`);
+      });
+      rzp.open();
+    } catch (err: any) {
+      console.error('Checkout error:', err);
+      showNotification('An error occurred during checkout setup.');
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -141,11 +262,12 @@ export default function CartView({ icons }: CartViewProps) {
               </div>
             </div>
             <button
-              className="btn btn-primary orbitron uppercase tracking-widest text-xs md:text-sm py-3.5 px-8 shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+              className="btn btn-primary orbitron uppercase tracking-widest text-xs md:text-sm py-3.5 px-8 shadow-[0_0_15px_rgba(6,182,212,0.4)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               type="button"
+              disabled={isProcessing}
               onClick={handleCheckout}
             >
-              Proceed to Checkout
+              {isProcessing ? 'Processing...' : 'Pay Now / Place Order'}
             </button>
           </div>
         </div>
