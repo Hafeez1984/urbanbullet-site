@@ -1,9 +1,45 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
-import { wcApi } from '@/lib/woocommerce-client';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+/**
+ * Helper to fetch data directly from WooCommerce REST API using native fetch
+ * with `{ cache: 'no-store' }` to prevent stale response caching.
+ */
+async function fetchWC(endpoint: string, params: Record<string, any> = {}) {
+  const baseUrl = process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://ub-engine.urbanbullet.in';
+  const consumerKey = process.env.WC_CONSUMER_KEY || '';
+  const consumerSecret = process.env.WC_CONSUMER_SECRET || '';
+
+  const url = new URL(`${baseUrl}/wp-json/wc/v3/${endpoint}`);
+  Object.entries(params).forEach(([key, val]) => {
+    if (val !== undefined && val !== null) {
+      url.searchParams.append(key, String(val));
+    }
+  });
+
+  const authHeader = 'Basic ' + Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+
+  const res = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      'Authorization': authHeader,
+      'Content-Type': 'application/json',
+    },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`WooCommerce API error ${res.status}: ${errorText}`);
+  }
+
+  const data = await res.json();
+  return { data };
+}
 
 export async function GET(request: Request) {
   try {
@@ -39,13 +75,13 @@ export async function GET(request: Request) {
       });
     }
 
-    let customerData = null;
+    let customerData: any = null;
     let ordersData: any[] = [];
     const addressesData: any[] = [];
 
     // 1. Fetch Customer details from WooCommerce REST API matching logged-in user email
     try {
-      const customerRes = await wcApi.get("customers", { search: userEmail.toLowerCase(), role: 'all' });
+      const customerRes = await fetchWC("customers", { search: userEmail.toLowerCase(), role: 'all' });
       if (customerRes.data && Array.isArray(customerRes.data)) {
         const match = customerRes.data.find(
           (c: any) => c.email && c.email.toLowerCase() === userEmail.toLowerCase()
@@ -99,35 +135,68 @@ export async function GET(request: Request) {
       }
     }
 
-    // 3. Fetch User Orders from WooCommerce matching customer ID or user email
+    // 3. Fetch User Orders from WooCommerce
     try {
       let wcOrders: any[] = [];
       const fetchedOrderIds = new Set<number | string>();
 
-      // A. Query orders by customer ID if customer record exists
-      if (customerData?.id) {
-        const orderRes = await wcApi.get("orders", { customer: customerData.id, per_page: 50 });
-        if (orderRes.data && Array.isArray(orderRes.data)) {
-          for (const order of orderRes.data) {
-            if (!fetchedOrderIds.has(order.id)) {
-              fetchedOrderIds.add(order.id);
-              wcOrders.push(order);
+      // A. Primary attempt: Query orders by customer_id if customer record exists with valid ID > 0
+      if (customerData?.id && Number(customerData.id) > 0) {
+        try {
+          const orderRes = await fetchWC("orders", { customer: customerData.id, per_page: 50 });
+          if (orderRes.data && Array.isArray(orderRes.data)) {
+            for (const order of orderRes.data) {
+              if (!fetchedOrderIds.has(order.id)) {
+                fetchedOrderIds.add(order.id);
+                wcOrders.push(order);
+              }
             }
           }
+        } catch (err) {
+          console.error("Error querying WooCommerce orders by customer_id:", err);
         }
       }
 
-      // B. Query orders by email search (matching logged-in user email in billing or customer)
-      const orderSearchRes = await wcApi.get("orders", { search: userEmail, per_page: 50 });
-      if (orderSearchRes.data && Array.isArray(orderSearchRes.data)) {
-        for (const order of orderSearchRes.data) {
-          const orderEmail = order.billing?.email || order.customer_email || '';
-          const matchesEmail = orderEmail.toLowerCase() === userEmail.toLowerCase();
-          const matchesCustomerId = customerData?.id && Number(order.customer_id) === Number(customerData.id);
-          if ((matchesEmail || matchesCustomerId) && !fetchedOrderIds.has(order.id)) {
-            fetchedOrderIds.add(order.id);
-            wcOrders.push(order);
+      // B. Fallback: If query by customer_id returns empty (or customerData is missing/has ID 0), strictly query by NextAuth session email as backup
+      if (wcOrders.length === 0) {
+        try {
+          const orderSearchRes = await fetchWC("orders", { search: userEmail, per_page: 50 });
+          if (orderSearchRes.data && Array.isArray(orderSearchRes.data)) {
+            for (const order of orderSearchRes.data) {
+              const billingEmail = order.billing?.email || '';
+              const customerEmail = order.customer_email || '';
+              const matchesEmail =
+                billingEmail.toLowerCase() === userEmail.toLowerCase() ||
+                customerEmail.toLowerCase() === userEmail.toLowerCase();
+              const matchesCustomerId = customerData?.id && Number(order.customer_id) === Number(customerData.id);
+
+              if ((matchesEmail || matchesCustomerId) && !fetchedOrderIds.has(order.id)) {
+                fetchedOrderIds.add(order.id);
+                wcOrders.push(order);
+              }
+            }
           }
+
+          // Backup check: fetch recent orders if search parameter missed any guest order matching user email
+          if (wcOrders.length === 0) {
+            const recentOrdersRes = await fetchWC("orders", { per_page: 50 });
+            if (recentOrdersRes.data && Array.isArray(recentOrdersRes.data)) {
+              for (const order of recentOrdersRes.data) {
+                const billingEmail = order.billing?.email || '';
+                const customerEmail = order.customer_email || '';
+                const matchesEmail =
+                  billingEmail.toLowerCase() === userEmail.toLowerCase() ||
+                  customerEmail.toLowerCase() === userEmail.toLowerCase();
+
+                if (matchesEmail && !fetchedOrderIds.has(order.id)) {
+                  fetchedOrderIds.add(order.id);
+                  wcOrders.push(order);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error querying WooCommerce orders by email fallback:", err);
         }
       }
 

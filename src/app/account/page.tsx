@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AuthCard from '@/app/(auth)/components/AuthCard';
@@ -65,24 +65,27 @@ function AccountContent() {
     }
   }, [searchParams]);
 
-  // Fetch real WooCommerce order history & saved addresses based on authenticated session email
-  useEffect(() => {
-    if (session?.user?.email) {
-      setIsLoadingData(true);
-      fetch('/api/account')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.orders && Array.isArray(data.orders)) {
-            setOrders(data.orders);
-          }
-          if (data.addresses && Array.isArray(data.addresses)) {
-            setAddresses(data.addresses);
-          }
-        })
-        .catch((err) => console.error("Failed to load account data from WooCommerce:", err))
-        .finally(() => setIsLoadingData(false));
-    }
+  const loadAccountData = useCallback(() => {
+    if (!session?.user?.email) return;
+    setIsLoadingData(true);
+    fetch('/api/account', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.orders && Array.isArray(data.orders)) {
+          setOrders(data.orders);
+        }
+        if (data.addresses && Array.isArray(data.addresses)) {
+          setAddresses(data.addresses);
+        }
+      })
+      .catch((err) => console.error("Failed to load account data from WooCommerce:", err))
+      .finally(() => setIsLoadingData(false));
   }, [session?.user?.email]);
+
+  // Fetch real WooCommerce order history & saved addresses based on authenticated session email & active tab
+  useEffect(() => {
+    loadAccountData();
+  }, [loadAccountData, activeTab]);
 
   if (status === 'loading') {
     return (
