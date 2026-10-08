@@ -49,6 +49,11 @@ export default function CartView({ icons }: CartViewProps) {
   const total = subtotal + shipping + tax;
 
   const handleCheckout = async () => {
+    if (!session?.user?.email) {
+      showNotification('Please sign in to place an order.');
+      return;
+    }
+
     if (total <= 0) {
       showNotification('Cart total must be greater than zero.');
       return;
@@ -85,6 +90,9 @@ export default function CartView({ icons }: CartViewProps) {
 
       // 3. Configure and launch Razorpay checkout modal
       const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_Tl4C0LdtWC1ZVC';
+      const userEmail = session.user.email;
+      const userName = session.user.name || undefined;
+
       const options = {
         key: razorpayKey,
         amount: orderData.amount,
@@ -103,8 +111,8 @@ export default function CartView({ icons }: CartViewProps) {
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
                 cart_items: items,
-                email: session?.user?.email || undefined,
-                name: session?.user?.name || undefined,
+                email: userEmail,
+                name: userName,
               }),
             });
 

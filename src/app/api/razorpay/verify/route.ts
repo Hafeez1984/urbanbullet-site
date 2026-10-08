@@ -30,13 +30,14 @@ async function getOrCreateCustomerId(
       }
     }
   } catch (err: any) {
-    console.error('Error searching for WooCommerce customer:', err?.response?.data || err.message);
+    const errData = err?.response?.data || err?.message || err;
+    console.error('Error searching for WooCommerce customer:', JSON.stringify(errData, null, 2));
   }
 
-  // 2. If not found, create a customer record in WooCommerce first
-  const nameParts = (name || '').trim().split(' ');
-  const firstName = nameParts[0] || normalizedEmail.split('@')[0];
-  const lastName = nameParts.slice(1).join(' ') || '';
+  // 2. Format name with safe fallbacks ('Urban', 'Bullet') if missing from NextAuth session
+  const nameParts = (name || '').trim().split(' ').filter(Boolean);
+  const firstName = nameParts[0] || 'Urban';
+  const lastName = nameParts.slice(1).join(' ') || 'Bullet';
 
   try {
     const createRes = await wcApi.post('customers', {
@@ -53,8 +54,10 @@ async function getOrCreateCustomerId(
       return createRes.data.id;
     }
   } catch (createErr: any) {
-    console.error('Error creating WooCommerce customer record:', createErr?.response?.data || createErr.message);
-    // If creation failed (e.g. existing email/user conflict), fallback search
+    const errData = createErr?.response?.data || createErr?.message || createErr;
+    console.error('Failed to create WooCommerce customer record:', JSON.stringify(errData, null, 2));
+
+    // If creation failed (e.g. existing email/user conflict), attempt fallback search
     try {
       const fallbackSearch = await wcApi.get('customers', { search: normalizedEmail, role: 'all' });
       if (fallbackSearch.data && Array.isArray(fallbackSearch.data)) {
@@ -65,8 +68,9 @@ async function getOrCreateCustomerId(
           return existing.id;
         }
       }
-    } catch (err) {
-      console.error('Error in fallback customer search:', err);
+    } catch (err: any) {
+      const fallbackErrData = err?.response?.data || err?.message || err;
+      console.error('Error in fallback customer search:', JSON.stringify(fallbackErrData, null, 2));
     }
   }
 
@@ -96,6 +100,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Require authenticated session email (no hardcoded test email fallback allowed)
+    if (!email || !email.trim()) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Authenticated session email is required to process order.' },
+        { status: 400 }
+      );
+    }
+
     const secret = process.env.RAZORPAY_KEY_SECRET?.trim();
     if (!secret) {
       return NextResponse.json(
@@ -104,8 +116,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify the signature using Node's crypto module:
-    // HMAC SHA256 of razorpay_order_id + "|" + razorpay_payment_id hashed with the RAZORPAY_KEY_SECRET
+    // Verify signature using HMAC SHA256
     const expectedSignature = crypto
       .createHmac('sha256', secret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -122,19 +133,45 @@ export async function POST(request: Request) {
       );
     }
 
-    // Signature is valid! Get or create customer ID matching NextAuth session email
+    // Signature verified! Get or create customer ID matching NextAuth session email
     const finalCustomerId = await getOrCreateCustomerId(email, name, customer_id);
 
-    // Build billing payload with NextAuth session email and name injected
-    const nameParts = (name || '').trim().split(' ');
-    const defaultFirstName = nameParts[0] || '';
-    const defaultLastName = nameParts.slice(1).join(' ') || '';
+    // Format first and last names with safe fallbacks ('Urban', 'Bullet') if missing
+    const nameParts = (name || '').trim().split(' ').filter(Boolean);
+    const defaultFirstName = nameParts[0] || 'Urban';
+    const defaultLastName = nameParts.slice(1).join(' ') || 'Bullet';
 
     const billingPayload = {
       first_name: billing?.first_name || defaultFirstName,
       last_name: billing?.last_name || defaultLastName,
-      email: billing?.email || email || '',
-      ...(billing || {}),
+      email: billing?.email || email,
+      phone: billing?.phone || '',
+      address_1: billing?.address_1 || '',
+      address_2: billing?.address_2 || '',
+      city: billing?.city || '',
+      state: billing?.state || '',
+      postcode: billing?.postcode || '',
+      country: billing?.country || 'IN',
+    };
+
+    const shippingPayload = shipping ? {
+      first_name: shipping.first_name || billingPayload.first_name,
+      last_name: shipping.last_name || billingPayload.last_name,
+      address_1: shipping.address_1 || billingPayload.address_1,
+      address_2: shipping.address_2 || billingPayload.address_2,
+      city: shipping.city || billingPayload.city,
+      state: shipping.state || billingPayload.state,
+      postcode: shipping.postcode || billingPayload.postcode,
+      country: shipping.country || billingPayload.country,
+    } : {
+      first_name: billingPayload.first_name,
+      last_name: billingPayload.last_name,
+      address_1: billingPayload.address_1,
+      address_2: billingPayload.address_2,
+      city: billingPayload.city,
+      state: billingPayload.state,
+      postcode: billingPayload.postcode,
+      country: billingPayload.country,
     };
 
     let wcOrder = null;
@@ -145,6 +182,7 @@ export async function POST(request: Request) {
       { key: 'razorpay_payment_id', value: razorpay_payment_id },
     ];
 
+    // If existing order ID was provided, update order
     if (wc_order_id) {
       try {
         const updatePayload: any = {
@@ -154,6 +192,7 @@ export async function POST(request: Request) {
           payment_method_title: 'Razorpay',
           meta_data: paymentMetaData,
           billing: billingPayload,
+          shipping: shippingPayload,
         };
         if (finalCustomerId) {
           updatePayload.customer_id = finalCustomerId;
@@ -162,18 +201,36 @@ export async function POST(request: Request) {
         const updateRes = await wcApi.put(`orders/${wc_order_id}`, updatePayload);
         wcOrder = updateRes.data;
       } catch (err: any) {
-        console.error(`Failed to update existing WooCommerce order ${wc_order_id}:`, err?.response?.data || err.message);
+        const errData = err?.response?.data || err?.message || err;
+        console.error(`Failed to update existing WooCommerce order ${wc_order_id}:`, JSON.stringify(errData, null, 2));
       }
     }
 
+    // If order was not updated, create a new WooCommerce order
     if (!wcOrder) {
       try {
-        const lineItems = (cart_items || []).map((item: any) => ({
-          product_id: Number(item.databaseId || item.id) || undefined,
-          name: item.name,
-          quantity: item.quantity || 1,
-          price: String(item.price),
-        }));
+        // Strictly format line_items to ensure WooCommerce product reference (product_id or SKU) is never empty/undefined
+        const lineItems = (cart_items || []).map((item: any) => {
+          const numericId = Number(item.databaseId || item.id);
+          const hasValidNumericId = Number.isInteger(numericId) && numericId > 0;
+
+          if (hasValidNumericId) {
+            return {
+              product_id: numericId,
+              name: item.name || 'Streetwear Item',
+              quantity: Number(item.quantity) || 1,
+              price: String(item.price),
+            };
+          }
+
+          // Fallback to SKU for non-numeric product IDs (e.g. mock items like 'prod_1')
+          return {
+            sku: String(item.sku || item.id || 'UB-STREETWEAR'),
+            name: item.name || 'Streetwear Item',
+            quantity: Number(item.quantity) || 1,
+            price: String(item.price),
+          };
+        });
 
         const newOrderData: any = {
           payment_method: 'razorpay',
@@ -182,40 +239,32 @@ export async function POST(request: Request) {
           status: 'processing',
           meta_data: paymentMetaData,
           billing: billingPayload,
+          shipping: shippingPayload,
+          line_items: lineItems,
         };
 
         if (finalCustomerId) {
           newOrderData.customer_id = finalCustomerId;
         }
 
-        if (lineItems.length > 0) {
-          newOrderData.line_items = lineItems;
-        }
-
-        if (shipping) {
-          newOrderData.shipping = shipping;
-        } else if (billingPayload) {
-          newOrderData.shipping = {
-            first_name: billingPayload.first_name,
-            last_name: billingPayload.last_name,
-            address_1: billingPayload.address_1 || '',
-            city: billingPayload.city || '',
-            state: billingPayload.state || '',
-            postcode: billingPayload.postcode || '',
-            country: billingPayload.country || '',
-          };
-        }
-
         const createRes = await wcApi.post('orders', newOrderData);
         wcOrder = createRes.data;
       } catch (err: any) {
-        console.error('Failed to create WooCommerce order:', err?.response?.data || err.message);
+        const errData = err?.response?.data || err?.message || err;
+        console.error('Failed to create WooCommerce order:', JSON.stringify(errData, null, 2));
       }
+    }
+
+    if (!wcOrder) {
+      return NextResponse.json(
+        { error: 'Payment verified, but WooCommerce order creation failed. See server logs for details.' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Payment verified and order processed successfully',
+      message: 'Payment verified and WooCommerce order processed successfully',
       wc_order_id: wcOrder?.id || wc_order_id || null,
       razorpay_payment_id,
       razorpay_order_id,
