@@ -104,6 +104,7 @@ export default function CartView({ icons }: CartViewProps) {
                 razorpay_signature: response.razorpay_signature,
                 cart_items: items,
                 email: session?.user?.email || undefined,
+                name: session?.user?.name || undefined,
               }),
             });
 

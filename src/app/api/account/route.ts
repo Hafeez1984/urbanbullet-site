@@ -43,11 +43,16 @@ export async function GET(request: Request) {
     let ordersData: any[] = [];
     const addressesData: any[] = [];
 
-    // 1. Fetch Customer details from WooCommerce REST API
+    // 1. Fetch Customer details from WooCommerce REST API matching logged-in user email
     try {
-      const customerRes = await wcApi.get("customers", { email: userEmail });
-      if (customerRes.data && Array.isArray(customerRes.data) && customerRes.data.length > 0) {
-        customerData = customerRes.data[0];
+      const customerRes = await wcApi.get("customers", { search: userEmail.toLowerCase(), role: 'all' });
+      if (customerRes.data && Array.isArray(customerRes.data)) {
+        const match = customerRes.data.find(
+          (c: any) => c.email && c.email.toLowerCase() === userEmail.toLowerCase()
+        );
+        if (match) {
+          customerData = match;
+        }
       }
     } catch (err) {
       console.error("Error fetching WooCommerce customer by email:", err);
@@ -94,26 +99,44 @@ export async function GET(request: Request) {
       }
     }
 
-    // 3. Fetch User Orders from WooCommerce
+    // 3. Fetch User Orders from WooCommerce matching customer ID or user email
     try {
       let wcOrders: any[] = [];
+      const fetchedOrderIds = new Set<number | string>();
 
+      // A. Query orders by customer ID if customer record exists
       if (customerData?.id) {
         const orderRes = await wcApi.get("orders", { customer: customerData.id, per_page: 50 });
         if (orderRes.data && Array.isArray(orderRes.data)) {
-          wcOrders = orderRes.data;
+          for (const order of orderRes.data) {
+            if (!fetchedOrderIds.has(order.id)) {
+              fetchedOrderIds.add(order.id);
+              wcOrders.push(order);
+            }
+          }
         }
       }
 
-      // Fallback search by billing email if customer ID returned no orders
-      if (wcOrders.length === 0) {
-        const orderSearchRes = await wcApi.get("orders", { search: userEmail, per_page: 50 });
-        if (orderSearchRes.data && Array.isArray(orderSearchRes.data)) {
-          wcOrders = orderSearchRes.data.filter(
-            (o: any) => o.billing?.email?.toLowerCase() === userEmail.toLowerCase()
-          );
+      // B. Query orders by email search (matching logged-in user email in billing or customer)
+      const orderSearchRes = await wcApi.get("orders", { search: userEmail, per_page: 50 });
+      if (orderSearchRes.data && Array.isArray(orderSearchRes.data)) {
+        for (const order of orderSearchRes.data) {
+          const orderEmail = order.billing?.email || order.customer_email || '';
+          const matchesEmail = orderEmail.toLowerCase() === userEmail.toLowerCase();
+          const matchesCustomerId = customerData?.id && Number(order.customer_id) === Number(customerData.id);
+          if ((matchesEmail || matchesCustomerId) && !fetchedOrderIds.has(order.id)) {
+            fetchedOrderIds.add(order.id);
+            wcOrders.push(order);
+          }
         }
       }
+
+      // Sort orders by date_created descending (newest first)
+      wcOrders.sort((a: any, b: any) => {
+        const dateA = new Date(a.date_created || 0).getTime();
+        const dateB = new Date(b.date_created || 0).getTime();
+        return dateB - dateA;
+      });
 
       ordersData = wcOrders.map((order: any) => {
         const formattedDate = order.date_created
