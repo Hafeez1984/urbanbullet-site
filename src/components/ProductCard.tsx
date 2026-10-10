@@ -27,9 +27,9 @@ export function ProductCard({ product }: { product?: any } = {}) {
       ? product.image
       : 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=800&q=80');
   const productUrl = product?.slug
-    ? `/products/${product.slug}`
+    ? `/product/${product.slug}`
     : product?.id
-    ? `/products/${product.id}`
+    ? `/product/${product.id}`
     : '/';
 
   const handleAddToCart = (e: React.MouseEvent) => {

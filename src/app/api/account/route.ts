@@ -9,28 +9,36 @@ export const revalidate = 0;
  * Helper to fetch data directly from WooCommerce REST API using native fetch
  * with `{ cache: 'no-store' }` to prevent stale response caching.
  */
-async function fetchWC(endpoint: string, params: Record<string, any> = {}) {
+async function fetchWC(endpoint: string, params: Record<string, any> = {}, method: string = 'GET', bodyData?: any) {
   const baseUrl = process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://ub-engine.urbanbullet.in';
   const consumerKey = process.env.WC_CONSUMER_KEY || '';
   const consumerSecret = process.env.WC_CONSUMER_SECRET || '';
 
   const url = new URL(`${baseUrl}/wp-json/wc/v3/${endpoint}`);
-  Object.entries(params).forEach(([key, val]) => {
-    if (val !== undefined && val !== null) {
-      url.searchParams.append(key, String(val));
-    }
-  });
+  if (method === 'GET') {
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null) {
+        url.searchParams.append(key, String(val));
+      }
+    });
+  }
 
   const authHeader = 'Basic ' + Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
 
-  const res = await fetch(url.toString(), {
-    method: 'GET',
+  const options: RequestInit = {
+    method,
     headers: {
       'Authorization': authHeader,
       'Content-Type': 'application/json',
     },
     cache: 'no-store',
-  });
+  };
+
+  if (bodyData && method !== 'GET') {
+    options.body = JSON.stringify(bodyData);
+  }
+
+  const res = await fetch(url.toString(), options);
 
   if (!res.ok) {
     const errorText = await res.text();
@@ -88,6 +96,30 @@ export async function GET(request: Request) {
         );
         if (match) {
           customerData = match;
+        }
+      }
+
+      // Auto-create customer in WooCommerce if new user doesn't exist yet
+      if (!customerData && userEmail) {
+        try {
+          const nameParts = (session?.user?.name || '').trim().split(' ').filter(Boolean);
+          const firstName = nameParts[0] || 'Urban';
+          const lastName = nameParts.slice(1).join(' ') || 'Explorer';
+          const newCustRes = await fetchWC("customers", {}, "POST", {
+            email: userEmail.toLowerCase(),
+            first_name: firstName,
+            last_name: lastName,
+            billing: {
+              first_name: firstName,
+              last_name: lastName,
+              email: userEmail.toLowerCase(),
+            },
+          });
+          if (newCustRes.data && newCustRes.data.id) {
+            customerData = newCustRes.data;
+          }
+        } catch (createErr) {
+          console.warn("Could not auto-create WooCommerce customer for new user:", createErr);
         }
       }
     } catch (err) {

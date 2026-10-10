@@ -169,3 +169,172 @@ export async function getProducts(categorySlug?: string, limit = 6): Promise<Pro
     return MOCK_PRODUCTS.slice(0, limit);
   }
 }
+
+export interface DetailedProduct {
+  id: string;
+  databaseId?: number;
+  name: string;
+  slug: string;
+  sku: string;
+  price: string;
+  numericPrice: number;
+  regularPrice?: string | null;
+  salePrice?: string | null;
+  onSale: boolean;
+  isNew?: boolean;
+  inStock: boolean;
+  stockQuantity?: number | null;
+  images: Array<{ sourceUrl: string; altText: string }>;
+  attributes: Array<{ name: string; options: string[] }>;
+  shortDescription: string;
+  description: string;
+  averageRating: number;
+  reviewCount: number;
+}
+
+/**
+ * Fetch detailed single product by slug or ID from WooCommerce REST API with robust mock fallback.
+ */
+export async function getProductBySlugOrId(slugOrId: string): Promise<DetailedProduct> {
+  const fallbackMock = MOCK_PRODUCTS.find((p) => p.slug === slugOrId || p.id === slugOrId) || MOCK_PRODUCTS[0];
+
+  const buildMockDetailed = (p: Product): DetailedProduct => {
+    const numPrice = parseFloat(p.price.replace(/[^0-9.]/g, "")) || 99;
+    return {
+      id: p.id,
+      databaseId: p.databaseId || 1,
+      name: p.name,
+      slug: p.slug,
+      sku: `UB-${p.id.toUpperCase()}`,
+      price: p.price.startsWith("₹") ? p.price : `₹${p.price}`,
+      numericPrice: numPrice,
+      regularPrice: p.regularPrice ? (p.regularPrice.startsWith("₹") ? p.regularPrice : `₹${p.regularPrice}`) : null,
+      salePrice: p.salePrice ? (p.salePrice.startsWith("₹") ? p.salePrice : `₹${p.salePrice}`) : null,
+      onSale: p.onSale,
+      isNew: p.isNew ?? true,
+      inStock: true,
+      stockQuantity: 25,
+      images: [
+        { sourceUrl: p.image.sourceUrl, altText: p.image.altText || p.name },
+        { sourceUrl: "https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&w=800&q=80", altText: `${p.name} Back` },
+        { sourceUrl: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=800&q=80", altText: `${p.name} Detail` },
+      ],
+      attributes: [
+        { name: "Size", options: ["S", "M", "L", "XL", "XXL"] },
+        { name: "Color", options: ["OBSIDIAN BLACK", "NEON CYAN", "ACID MAGENTA"] },
+      ],
+      shortDescription: p.shortDescription || "Engineered with premium cyber-wear textiles for maximum durability and futuristic style.",
+      description: "Full cyber-wear tech-fiber integration. Water-resistant microcoatings designed for modern metropolitan exploration. High-density embroidery, custom inner lining, reinforced seams.",
+      averageRating: p.averageRating || 5,
+      reviewCount: p.reviewCount || 12,
+    };
+  };
+
+  if (!isServer || !hasCredentials) {
+    return buildMockDetailed(fallbackMock);
+  }
+
+  try {
+    let wcProduct: any = null;
+    const isNumeric = /^\d+$/.test(slugOrId);
+
+    if (isNumeric) {
+      try {
+        const response = await wcApi.get(`products/${slugOrId}`);
+        if (response && response.data && response.data.id) {
+          wcProduct = response.data;
+        }
+      } catch (err) {
+        // Fallback to slug search
+      }
+    }
+
+    if (!wcProduct) {
+      try {
+        const response = await wcApi.get("products", { slug: slugOrId });
+        if (response && response.data && response.data.length > 0) {
+          wcProduct = response.data[0];
+        }
+      } catch (err) {
+        // Ignore
+      }
+    }
+
+    if (!wcProduct) {
+      return buildMockDetailed(fallbackMock);
+    }
+
+    const cleanShortDesc = wcProduct.short_description
+      ? wcProduct.short_description.replace(/<[^>]*>/g, "").trim()
+      : "Engineered with premium cyber-wear textiles for maximum durability and futuristic style.";
+
+    const cleanDesc = wcProduct.description
+      ? wcProduct.description.replace(/<[^>]*>/g, "").trim()
+      : "Full cyber-wear tech-fiber integration. Water-resistant microcoatings designed for modern metropolitan exploration.";
+
+    const rawImages: any[] = wcProduct.images || [];
+    const formattedImages = rawImages.map((img: any) => ({
+      sourceUrl: img.src,
+      altText: img.alt || wcProduct.name,
+    }));
+
+    if (formattedImages.length === 0) {
+      formattedImages.push(
+        { sourceUrl: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=800&q=80", altText: wcProduct.name },
+        { sourceUrl: "https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=800&q=80", altText: `${wcProduct.name} Back` },
+        { sourceUrl: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=800&q=80", altText: `${wcProduct.name} Detail` }
+      );
+    } else if (formattedImages.length === 1) {
+      formattedImages.push(
+        { sourceUrl: "https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=800&q=80", altText: `${wcProduct.name} Back View` },
+        { sourceUrl: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=800&q=80", altText: `${wcProduct.name} Detail View` }
+      );
+    }
+
+    const rawAttributes: any[] = wcProduct.attributes || [];
+    const formattedAttributes = rawAttributes
+      .filter((attr: any) => attr.options && attr.options.length > 0)
+      .map((attr: any) => ({
+        name: attr.name,
+        options: attr.options,
+      }));
+
+    if (!formattedAttributes.some((a) => a.name.toLowerCase().includes("size"))) {
+      formattedAttributes.push({ name: "Size", options: ["S", "M", "L", "XL", "XXL"] });
+    }
+    if (!formattedAttributes.some((a) => a.name.toLowerCase().includes("color"))) {
+      formattedAttributes.push({ name: "Color", options: ["OBSIDIAN BLACK", "NEON CYAN", "ACID MAGENTA"] });
+    }
+
+    const numPrice = parseFloat(wcProduct.price) || 99;
+    const formattedPrice = wcProduct.price ? `₹${wcProduct.price}` : "₹99.00";
+    const formattedRegPrice = wcProduct.regular_price ? `₹${wcProduct.regular_price}` : null;
+    const formattedSalePrice = wcProduct.sale_price ? `₹${wcProduct.sale_price}` : null;
+
+    return {
+      id: String(wcProduct.id),
+      databaseId: wcProduct.id,
+      name: wcProduct.name,
+      slug: wcProduct.slug,
+      sku: wcProduct.sku || `UB-${wcProduct.id}`,
+      price: formattedPrice,
+      numericPrice: numPrice,
+      regularPrice: formattedRegPrice,
+      salePrice: formattedSalePrice,
+      onSale: wcProduct.on_sale || false,
+      isNew: new Date(wcProduct.date_created).getTime() > Date.now() - 30 * 24 * 60 * 60 * 1000,
+      inStock: wcProduct.stock_status !== "outofstock",
+      stockQuantity: wcProduct.stock_quantity ?? null,
+      images: formattedImages,
+      attributes: formattedAttributes,
+      shortDescription: cleanShortDesc,
+      description: cleanDesc,
+      averageRating: parseFloat(wcProduct.average_rating) || 5,
+      reviewCount: wcProduct.rating_count || 12,
+    };
+  } catch (error) {
+    console.error(`Failed to fetch product by slug/ID ${slugOrId}:`, error);
+    return buildMockDetailed(fallbackMock);
+  }
+}
+

@@ -104,13 +104,14 @@ function AccountContent() {
     return <AuthCard />;
   }
 
-  const userName = session.user.name || 'Urban Explorer';
-  const userEmail = session.user.email || 'user@urbanbullet.co';
-  const userImage = session.user.image;
+  const userName = session?.user?.name || 'Urban Explorer';
+  const userEmail = session?.user?.email || 'user@urbanbullet.co';
+  const userImage = session?.user?.image;
 
   // Extract initials for fallback avatar
   const initials = userName
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .substring(0, 2)
@@ -122,7 +123,7 @@ function AccountContent() {
   };
 
   const processingCount = orders.filter(
-    (o) => o.status.toLowerCase() === 'processing' || o.status.toLowerCase() === 'pending'
+    (o) => o?.status && (o.status.toLowerCase() === 'processing' || o.status.toLowerCase() === 'pending')
   ).length;
 
   return (
@@ -379,7 +380,7 @@ function AccountContent() {
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-xs font-bold text-white">{order.orderNumber}</span>
                                 <span className={`border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
-                                  order.status.toLowerCase() === 'completed' || order.status.toLowerCase() === 'delivered'
+                                  order.status && (order.status.toLowerCase() === 'completed' || order.status.toLowerCase() === 'delivered')
                                     ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                                     : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
                                 }`}>
@@ -446,7 +447,7 @@ function AccountContent() {
                             </div>
                             <div className="flex items-center gap-3">
                               <span className={`border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider ${
-                                order.status.toLowerCase() === 'completed' || order.status.toLowerCase() === 'delivered'
+                                order.status && (order.status.toLowerCase() === 'completed' || order.status.toLowerCase() === 'delivered')
                                   ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                                   : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
                               }`}>

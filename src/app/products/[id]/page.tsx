@@ -1,12 +1,6 @@
 import React from 'react';
-import { MOCK_PRODUCTS } from '@/lib/mockData';
+import { getProductBySlugOrId } from '@/lib/woocommerce';
 import ProductDetailClient from '@/components/ProductDetailClient';
-
-export async function generateStaticParams() {
-  return MOCK_PRODUCTS.map((product) => ({
-    id: product.id,
-  }));
-}
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -14,7 +8,7 @@ interface PageProps {
 
 export default async function ProductDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const product = MOCK_PRODUCTS.find((p) => p.id === id) || MOCK_PRODUCTS[0];
+  const product = await getProductBySlugOrId(id);
 
   return <ProductDetailClient product={product} />;
 }
