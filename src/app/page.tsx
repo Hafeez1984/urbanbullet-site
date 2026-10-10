@@ -258,8 +258,8 @@ export default function Home() {
 
           {/* Product Cards Shell Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 justify-items-center">
-            {filteredProducts.map((_, index) => (
-              <ProductCard key={index} />
+            {filteredProducts.map((product, index) => (
+              <ProductCard key={product.id || index} product={product} />
             ))}
           </div>
         </div>

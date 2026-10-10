@@ -30,7 +30,7 @@ export function ProductCard({ product }: { product?: any } = {}) {
     ? `/product/${product.slug}`
     : product?.id
     ? `/product/${product.id}`
-    : '/';
+    : '/product/cyber-hoodie';
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -72,7 +72,7 @@ export function ProductCard({ product }: { product?: any } = {}) {
     <article className="group relative bg-[#080a11]/85 backdrop-blur-xl border border-[#1b223c] hover:border-[#00f0ff]/80 transition-all duration-500 flex flex-col cyber-chamfer hover:shadow-[0_0_20px_-3px_rgba(0,240,255,0.45)] scanline-bg w-full max-w-sm text-slate-100">
       <div className="flex justify-between items-center px-4 pt-3 pb-1 text-[10px] font-mono text-slate-500 uppercase tracking-widest border-b border-[#1b223c]/40">
         <span className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 bg-[#00f0ff] inline-block"></span>SYS.REF // 884-XTR
+          <span className="w-1.5 h-1.5 bg-[#00f0ff] inline-block"></span>SYS.REF // {product?.id || '884-XTR'}
         </span>
         <span className="text-[#00f0ff]/70 font-semibold">NEO_FABRIC // POD-01</span>
       </div>
@@ -83,29 +83,38 @@ export function ProductCard({ product }: { product?: any } = {}) {
           </span>
         </div>
         <button
-          onClick={() => setIsWishlisted(!isWishlisted)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsWishlisted(!isWishlisted);
+          }}
           className={`absolute top-3 right-3 z-20 w-9 h-9 flex items-center justify-center bg-black/70 border ${
             isWishlisted
               ? 'border-[#ff0055] text-[#ff0055]'
               : 'border-slate-700/80 text-slate-400'
-          } hover:text-[#ff0055] hover:border-[#ff0055] transition-all backdrop-blur-md`}
+          } hover:text-[#ff0055] hover:border-[#ff0055] transition-all backdrop-blur-md cursor-pointer`}
         >
           <Heart className="w-4 h-4" />
         </button>
         <Link
-          className="relative w-full h-full p-6 flex items-center justify-center cursor-pointer"
+          className="relative w-full h-full p-6 flex items-center justify-center cursor-pointer group/link"
           href={productUrl}
         >
           <img
             src={imageUrl}
             alt={title}
-            className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:opacity-0 group-hover:scale-105"
+            className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:opacity-30 group-hover:scale-105"
           />
           <img
             src="https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&w=800&q=80"
             alt="Back"
-            className="absolute inset-0 w-full h-full object-cover opacity-0 transition-all duration-700 group-hover:opacity-100 group-hover:scale-100"
+            className="absolute inset-0 w-full h-full object-cover opacity-0 transition-all duration-700 group-hover:opacity-40 group-hover:scale-100"
           />
+          {/* Hover View Product Button Badge */}
+          <div className="z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+            <span className="px-4 py-2 rounded-full bg-[#00f0ff] text-black font-mono font-bold text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(0,240,255,0.6)] flex items-center gap-1.5">
+              <span>VIEW PRODUCT</span>
+            </span>
+          </div>
         </Link>
         <div className="absolute bottom-2 right-2 text-[9px] font-mono text-slate-400 bg-black/80 px-2 py-0.5 border border-slate-800 backdrop-blur-sm z-10 flex items-center gap-1.5 pointer-events-none">
           <Printer className="w-3 h-3 text-[#00f0ff]" /> DTG ULTRA-HD
