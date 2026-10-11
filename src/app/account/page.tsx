@@ -8,6 +8,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import CartView from '@/components/account/CartView';
 import { useCart } from '@/context/CartContext';
+import { useNotification } from '@/context/NotificationContext';
 
 type Tab = 'overview' | 'orders' | 'profile' | 'addresses' | 'cart';
 
@@ -51,11 +52,43 @@ function AccountContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { cartCount } = useCart();
+  const { showNotification } = useNotification();
 
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [addresses, setAddresses] = useState<AddressData[]>([]);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+
+  // Address modal state
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [addressFormError, setAddressFormError] = useState<string | null>(null);
+  const [addressForm, setAddressForm] = useState({
+    name: '',
+    address: '',
+    nearestLandmark: '',
+    pin: '',
+    email: '',
+    contactNumber: '',
+  });
+
+  const openAddressModal = () => {
+    setAddressForm({
+      name: session?.user?.name || '',
+      address: '',
+      nearestLandmark: '',
+      pin: '',
+      email: session?.user?.email || '',
+      contactNumber: '',
+    });
+    setAddressFormError(null);
+    setIsAddressModalOpen(true);
+  };
+
+  const closeAddressModal = () => {
+    setIsAddressModalOpen(false);
+    setAddressFormError(null);
+  };
 
   // Sync activeTab with URL ?tab= search parameter (e.g. when Cart Icon in Header is clicked)
   useEffect(() => {
@@ -81,6 +114,33 @@ function AccountContent() {
       .catch((err) => console.error("Failed to load account data from WooCommerce:", err))
       .finally(() => setIsLoadingData(false));
   }, [session?.user?.email]);
+
+  const handleSaveAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingAddress(true);
+    setAddressFormError(null);
+
+    try {
+      const res = await fetch('/api/account/address', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addressForm),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save address.');
+      }
+
+      showNotification('Address saved successfully.');
+      closeAddressModal();
+      loadAccountData();
+    } catch (err: any) {
+      setAddressFormError(err.message || 'Error occurred while saving address.');
+    } finally {
+      setIsSavingAddress(false);
+    };
+  };
 
   // Fetch real WooCommerce order history & saved addresses based on authenticated session email & active tab
   useEffect(() => {
@@ -593,7 +653,11 @@ function AccountContent() {
                         Shipping destinations for express checkout
                       </p>
                     </div>
-                    <button className="border border-[#D4FF3F] bg-[#D4FF3F]/10 px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-[#D4FF3F] hover:bg-[#D4FF3F] hover:text-black transition">
+                    <button
+                      type="button"
+                      onClick={openAddressModal}
+                      className="border border-[#D4FF3F] bg-[#D4FF3F]/10 px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-[#D4FF3F] hover:bg-[#D4FF3F] hover:text-black transition"
+                    >
                       + Add Address
                     </button>
                   </div>
@@ -652,6 +716,154 @@ function AccountContent() {
             </div>
           </div>
         </div>
+
+        {/* CYBERPUNK ADDRESS MODAL */}
+        {isAddressModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+            <div className="relative w-full max-w-xl border border-white/10 bg-[#0a0a0a] p-6 sm:p-8 shadow-2xl space-y-6">
+              {/* Cyberpunk accent corner notches */}
+              <span className="pointer-events-none absolute -left-px -top-px h-3.5 w-3.5 border-l-2 border-t-2 border-[#06b6d4]" />
+              <span className="pointer-events-none absolute -right-px -top-px h-3.5 w-3.5 border-r-2 border-t-2 border-[#ec4899]" />
+              <span className="pointer-events-none absolute -bottom-px -left-px h-3.5 w-3.5 border-b-2 border-l-2 border-[#ec4899]" />
+              <span className="pointer-events-none absolute -bottom-px -right-px h-3.5 w-3.5 border-b-2 border-r-2 border-[#06b6d4]" />
+
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div>
+                  <h3 className="font-mono text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-[#06b6d4] animate-ping" />
+                    New Delivery Coordinates
+                  </h3>
+                  <p className="font-mono text-[11px] text-zinc-400 mt-0.5">
+                    Configure your shipping address for instant dispatch
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeAddressModal}
+                  className="font-mono text-zinc-400 hover:text-[#ec4899] text-xl px-2 py-1 transition"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Error Alert */}
+              {addressFormError && (
+                <div className="border border-[#ec4899]/40 bg-[#ec4899]/10 p-3 font-mono text-xs text-[#ec4899]">
+                  {addressFormError}
+                </div>
+              )}
+
+              {/* Address Form */}
+              <form onSubmit={handleSaveAddress} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block font-mono text-[10px] uppercase tracking-wider text-[#06b6d4]">
+                    Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={addressForm.name}
+                    onChange={(e) => setAddressForm({ ...addressForm, name: e.target.value })}
+                    placeholder="Recipient Full Name"
+                    className="w-full border border-white/10 bg-black/60 px-4 py-2.5 font-mono text-xs text-white outline-none focus:border-[#06b6d4] transition"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block font-mono text-[10px] uppercase tracking-wider text-[#06b6d4]">
+                    Address *
+                  </label>
+                  <textarea
+                    required
+                    rows={2}
+                    value={addressForm.address}
+                    onChange={(e) => setAddressForm({ ...addressForm, address: e.target.value })}
+                    placeholder="Flat / House no., Building, Street address"
+                    className="w-full border border-white/10 bg-black/60 px-4 py-2.5 font-mono text-xs text-white outline-none focus:border-[#06b6d4] transition resize-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+                    Nearest Landmark
+                  </label>
+                  <input
+                    type="text"
+                    value={addressForm.nearestLandmark}
+                    onChange={(e) => setAddressForm({ ...addressForm, nearestLandmark: e.target.value })}
+                    placeholder="Nearby landmark, metro station, etc. (optional)"
+                    className="w-full border border-white/10 bg-black/60 px-4 py-2.5 font-mono text-xs text-white outline-none focus:border-[#06b6d4] transition"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block font-mono text-[10px] uppercase tracking-wider text-[#06b6d4]">
+                    PIN *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={addressForm.pin}
+                    onChange={(e) => setAddressForm({ ...addressForm, pin: e.target.value })}
+                    placeholder="6-digit Postal Code"
+                    className="w-full border border-white/10 bg-black/60 px-4 py-2.5 font-mono text-xs text-white outline-none focus:border-[#06b6d4] transition"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block font-mono text-[10px] uppercase tracking-wider text-[#06b6d4]">
+                      E-mail ID *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={addressForm.email}
+                      onChange={(e) => setAddressForm({ ...addressForm, email: e.target.value })}
+                      placeholder="vault@urbanbullet.co"
+                      className="w-full border border-white/10 bg-black/60 px-4 py-2.5 font-mono text-xs text-white outline-none focus:border-[#06b6d4] transition"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block font-mono text-[10px] uppercase tracking-wider text-[#06b6d4]">
+                      Contact Number *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={addressForm.contactNumber}
+                      onChange={(e) => setAddressForm({ ...addressForm, contactNumber: e.target.value })}
+                      placeholder="+91 98765 43210"
+                      className="w-full border border-white/10 bg-black/60 px-4 py-2.5 font-mono text-xs text-white outline-none focus:border-[#06b6d4] transition"
+                    />
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={closeAddressModal}
+                    disabled={isSavingAddress}
+                    className="border border-white/20 bg-transparent px-5 py-2.5 font-mono text-xs uppercase tracking-wider text-zinc-300 hover:border-zinc-400 hover:text-white transition disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingAddress}
+                    className="border border-[#06b6d4] bg-[#06b6d4]/10 hover:bg-[#06b6d4] text-[#06b6d4] hover:text-black px-6 py-2.5 font-mono text-xs font-bold uppercase tracking-wider transition shadow-[0_0_15px_rgba(6,182,212,0.3)] disabled:opacity-50"
+                  >
+                    {isSavingAddress ? 'Saving...' : 'Save Address'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
 
       <Footer />

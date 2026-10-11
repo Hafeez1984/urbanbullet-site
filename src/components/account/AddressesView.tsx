@@ -85,40 +85,38 @@ export default function AddressesView({
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  // Address form fields
-  const [formFields, setFormFields] = useState<AddressDetail>({
-    id: '',
-    type: 'shipping',
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [addressForm, setAddressForm] = useState({
     name: '',
-    line1: '',
-    line2: '',
-    city: '',
-    state: '',
-    postcode: '',
-    phone: '',
-    country: '',
+    address: '',
+    nearestLandmark: '',
+    pin: '',
+    email: '',
+    contactNumber: '',
   });
 
   const startAdding = () => {
     setEditingId('new');
-    setFormFields({
-      id: '',
-      type: 'shipping',
+    setAddressForm({
       name: '',
-      line1: '',
-      line2: '',
-      city: '',
-      state: '',
-      postcode: '',
-      phone: '',
-      country: '',
+      address: '',
+      nearestLandmark: '',
+      pin: '',
+      email: '',
+      contactNumber: '',
     });
   };
 
   const startEditing = (address: AddressDetail) => {
     setEditingId(address.id);
-    setFormFields(address);
+    setAddressForm({
+      name: address.name || '',
+      address: address.line1 || '',
+      nearestLandmark: address.line2 || '',
+      pin: address.postcode || '',
+      email: '',
+      contactNumber: address.phone || '',
+    });
   };
 
   const handleDelete = (id: string) => {
@@ -136,36 +134,61 @@ export default function AddressesView({
     showNotification('Address record deleted successfully.');
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId) return;
 
-    let updatedList: AddressDetail[];
-    if (editingId === 'new') {
-      const newAddress: AddressDetail = {
-        ...formFields,
-        id: `addr_${Date.now()}`,
-      };
-      updatedList = [...addressList, newAddress];
-    } else {
-      updatedList = addressList.map((a) => (a.id === editingId ? formFields : a));
-    }
-
-    setAddressList(updatedList);
-
-    if (onUpdateAddresses) {
-      const billingDefault = updatedList.find((a) => a.type === 'billing') || updatedList[0];
-      const shippingDefault = updatedList.find((a) => a.type === 'shipping') || updatedList[0];
-      onUpdateAddresses({
-        billing: billingDefault || { name: '', line1: '', line2: '', city: '', state: '', postcode: '', country: '', phone: '' },
-        shipping: shippingDefault || { name: '', line1: '', line2: '', city: '', state: '', postcode: '', country: '', phone: '' },
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/account/address', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addressForm),
       });
-    }
 
-    showNotification(
-      editingId === 'new' ? 'New address record created successfully.' : 'Address record updated successfully.'
-    );
-    setEditingId(null);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save address');
+      }
+
+      const newAddress: AddressDetail = {
+        id: editingId === 'new' ? `addr_${Date.now()}` : editingId,
+        type: 'shipping',
+        name: addressForm.name,
+        line1: addressForm.address,
+        line2: addressForm.nearestLandmark,
+        city: '',
+        state: '',
+        postcode: addressForm.pin,
+        phone: addressForm.contactNumber,
+        country: 'India',
+      };
+
+      let updatedList: AddressDetail[];
+      if (editingId === 'new') {
+        updatedList = [...addressList, newAddress];
+      } else {
+        updatedList = addressList.map((a) => (a.id === editingId ? newAddress : a));
+      }
+
+      setAddressList(updatedList);
+
+      if (onUpdateAddresses) {
+        const billingDefault = updatedList.find((a) => a.type === 'billing') || updatedList[0];
+        const shippingDefault = updatedList.find((a) => a.type === 'shipping') || updatedList[0];
+        onUpdateAddresses({
+          billing: billingDefault || { name: '', line1: '', line2: '', city: '', state: '', postcode: '', country: '', phone: '' },
+          shipping: shippingDefault || { name: '', line1: '', line2: '', city: '', state: '', postcode: '', country: '', phone: '' },
+        });
+      }
+
+      showNotification('Address saved successfully.');
+      setEditingId(null);
+    } catch (err: any) {
+      showNotification(err.message || 'Error saving address.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -246,111 +269,87 @@ export default function AddressesView({
 
           <form className="form-grid" onSubmit={handleSave}>
             <div className="field">
-              <label htmlFor="addressType">Address Destination Type</label>
-              <select
-                className="input select-input"
-                id="addressType"
-                value={formFields.type}
-                onChange={(e) => setFormFields({ ...formFields, type: e.target.value as 'billing' | 'shipping' })}
-                style={{ background: 'rgba(0,0,0,0.5)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
-                required
-              >
-                <option value="shipping">Shipping Address</option>
-                <option value="billing">Billing Address</option>
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="fullName">Full Name</label>
+              <label htmlFor="addressName">Name</label>
               <input
-                className="input"
-                id="fullName"
-                value={formFields.name}
-                onChange={(e) => setFormFields({ ...formFields, name: e.target.value })}
+                className="input font-mono"
+                id="addressName"
+                value={addressForm.name}
+                onChange={(e) => setAddressForm({ ...addressForm, name: e.target.value })}
+                placeholder="Recipient Full Name"
                 required
               />
             </div>
-            <div className="field">
-              <label htmlFor="country">Country</label>
-              <input
-                className="input"
-                id="country"
-                value={formFields.country}
-                onChange={(e) => setFormFields({ ...formFields, country: e.target.value })}
-                required
-              />
-            </div>
+
             <div className="field full">
-              <label htmlFor="street">Street Address</label>
+              <label htmlFor="addressLine">Address</label>
               <input
-                className="input"
-                id="street"
-                value={formFields.line1}
-                onChange={(e) => setFormFields({ ...formFields, line1: e.target.value })}
+                className="input font-mono"
+                id="addressLine"
+                value={addressForm.address}
+                onChange={(e) => setAddressForm({ ...addressForm, address: e.target.value })}
+                placeholder="Flat / House no., Building, Street address"
                 required
               />
             </div>
-            <div className="field full">
-              <label htmlFor="suite">Apartment, suite, unit, etc. (optional)</label>
+
+            <div className="field">
+              <label htmlFor="nearestLandmark">Nearest Landmark</label>
               <input
-                className="input"
-                id="suite"
-                value={formFields.line2}
-                onChange={(e) => setFormFields({ ...formFields, line2: e.target.value })}
+                className="input font-mono"
+                id="nearestLandmark"
+                value={addressForm.nearestLandmark}
+                onChange={(e) => setAddressForm({ ...addressForm, nearestLandmark: e.target.value })}
+                placeholder="Nearby landmark (optional)"
               />
             </div>
+
             <div className="field">
-              <label htmlFor="city">City</label>
+              <label htmlFor="addressPin">PIN</label>
               <input
-                className="input"
-                id="city"
-                value={formFields.city}
-                onChange={(e) => setFormFields({ ...formFields, city: e.target.value })}
+                className="input font-mono"
+                id="addressPin"
+                value={addressForm.pin}
+                onChange={(e) => setAddressForm({ ...addressForm, pin: e.target.value })}
+                placeholder="6-digit Postal PIN"
                 required
               />
             </div>
+
             <div className="field">
-              <label htmlFor="state">State / Province</label>
+              <label htmlFor="addressEmail">E-mail ID</label>
               <input
-                className="input"
-                id="state"
-                value={formFields.state}
-                onChange={(e) => setFormFields({ ...formFields, state: e.target.value })}
+                className="input font-mono"
+                id="addressEmail"
+                type="email"
+                value={addressForm.email}
+                onChange={(e) => setAddressForm({ ...addressForm, email: e.target.value })}
+                placeholder="user@urbanbullet.co"
                 required
               />
             </div>
+
             <div className="field">
-              <label htmlFor="postcode">Postcode / Zip</label>
+              <label htmlFor="contactNumber">Contact Number</label>
               <input
-                className="input"
-                id="postcode"
-                value={formFields.postcode}
-                onChange={(e) => setFormFields({ ...formFields, postcode: e.target.value })}
-                required
-              />
-            </div>
-            
-            {/* Schema Update: Contact Phone Number input field styled side-by-side with postcode */}
-            <div className="field">
-              <label htmlFor="contactPhone">Contact Phone Number</label>
-              <input
-                className="input"
-                id="contactPhone"
+                className="input font-mono"
+                id="contactNumber"
                 type="tel"
-                value={formFields.phone}
-                onChange={(e) => setFormFields({ ...formFields, phone: e.target.value })}
-                placeholder="+1 (555) 000-0000"
+                value={addressForm.contactNumber}
+                onChange={(e) => setAddressForm({ ...addressForm, contactNumber: e.target.value })}
+                placeholder="+91 98765 43210"
                 required
               />
             </div>
 
             <div className="field full flex gap-3 mt-4">
-              <button className="btn btn-primary" type="submit">
-                Save Address Protocol
+              <button className="btn btn-primary" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : 'Save Address'}
               </button>
               <button
                 className="btn"
                 type="button"
                 onClick={() => setEditingId(null)}
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
