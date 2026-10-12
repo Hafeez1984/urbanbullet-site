@@ -61,7 +61,9 @@ function AccountContent() {
 
   // Address modal state
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [isDeletingAddress, setIsDeletingAddress] = useState(false);
   const [addressFormError, setAddressFormError] = useState<string | null>(null);
   const [addressForm, setAddressForm] = useState({
     name: '',
@@ -73,6 +75,7 @@ function AccountContent() {
   });
 
   const openAddressModal = () => {
+    setIsEditingAddress(false);
     setAddressForm({
       name: session?.user?.name || '',
       address: '',
@@ -85,9 +88,82 @@ function AccountContent() {
     setIsAddressModalOpen(true);
   };
 
+  const handleEditAddress = (addr?: AddressData) => {
+    setIsEditingAddress(true);
+    // Find current WooCommerce shipping address, or fallback to target/first address
+    const target =
+      addr ||
+      addresses.find((a) => a.id === 'shipping' || a.type.toLowerCase().includes('shipping')) ||
+      addresses[0];
+
+    const fullName = target
+      ? [target.firstName, target.lastName].filter(Boolean).join(' ').trim()
+      : (session?.user?.name || '');
+
+    setAddressForm({
+      name: fullName || session?.user?.name || '',
+      address: target?.address1 || '',
+      nearestLandmark: target?.address2 || '',
+      pin: target?.postcode || '',
+      email: target?.email || session?.user?.email || '',
+      contactNumber: target?.phone || '',
+    });
+    setAddressFormError(null);
+    setIsAddressModalOpen(true);
+  };
+
   const closeAddressModal = () => {
     setIsAddressModalOpen(false);
+    setIsEditingAddress(false);
     setAddressFormError(null);
+  };
+
+  const handleDeleteAddress = async () => {
+    const confirmed = window.confirm('Are you sure you want to delete this saved address?');
+    if (!confirmed) return;
+
+    setIsDeletingAddress(true);
+    // Optimistic UI update: immediately clear address from UI
+    const previousAddresses = addresses;
+    setAddresses([]);
+
+    try {
+      const res = await fetch('/api/account/address', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete address.');
+      }
+
+      showNotification('Address removed successfully.');
+      loadAccountData();
+    } catch (err: any) {
+      console.error('Error deleting address:', err);
+      // Revert if error occurred
+      setAddresses(previousAddresses);
+      showNotification(err.message || 'Failed to delete address.');
+    } finally {
+      setIsDeletingAddress(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('ub_user');
+        sessionStorage.clear();
+      }
+      router.refresh();
+      await signOut({ callbackUrl: '/account', redirect: true });
+    } catch (err) {
+      console.error('Sign-out error:', err);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/account';
+      }
+    }
   };
 
   // Sync activeTab with URL ?tab= search parameter (e.g. when Cart Icon in Header is clicked)
@@ -109,6 +185,8 @@ function AccountContent() {
         }
         if (data.addresses && Array.isArray(data.addresses)) {
           setAddresses(data.addresses);
+        } else {
+          setAddresses([]);
         }
       })
       .catch((err) => console.error("Failed to load account data from WooCommerce:", err))
@@ -132,14 +210,14 @@ function AccountContent() {
         throw new Error(data.error || 'Failed to save address.');
       }
 
-      showNotification('Address saved successfully.');
+      showNotification(isEditingAddress ? 'Address updated successfully.' : 'Address saved successfully.');
       closeAddressModal();
       loadAccountData();
     } catch (err: any) {
       setAddressFormError(err.message || 'Error occurred while saving address.');
     } finally {
       setIsSavingAddress(false);
-    };
+    }
   };
 
   // Fetch real WooCommerce order history & saved addresses based on authenticated session email & active tab
@@ -240,7 +318,7 @@ function AccountContent() {
               {/* Sign Out Button */}
               <button
                 type="button"
-                onClick={() => signOut({ callbackUrl: '/account' })}
+                onClick={handleSignOut}
                 className="inline-flex items-center justify-center gap-2 border border-red-500/40 bg-red-500/10 px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.2em] text-red-400 transition hover:border-red-500 hover:bg-red-500 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -703,9 +781,22 @@ function AccountContent() {
                           </div>
 
                           <div className="pt-2 flex items-center gap-3 font-mono text-xs">
-                            <button type="button" className="text-[#D4FF3F] hover:underline">Edit</button>
+                            <button
+                              type="button"
+                              onClick={() => handleEditAddress(address)}
+                              className="text-[#D4FF3F] hover:underline cursor-pointer"
+                            >
+                              Edit
+                            </button>
                             <span className="text-zinc-600">|</span>
-                            <button type="button" className="text-zinc-400 hover:text-white">Delete</button>
+                            <button
+                              type="button"
+                              onClick={handleDeleteAddress}
+                              disabled={isDeletingAddress}
+                              className="text-zinc-400 hover:text-red-400 transition cursor-pointer disabled:opacity-50"
+                            >
+                              {isDeletingAddress ? 'Deleting...' : 'Delete'}
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -732,10 +823,10 @@ function AccountContent() {
                 <div>
                   <h3 className="font-mono text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-[#06b6d4] animate-ping" />
-                    New Delivery Coordinates
+                    {isEditingAddress ? 'Update Delivery Coordinates' : 'New Delivery Coordinates'}
                   </h3>
                   <p className="font-mono text-[11px] text-zinc-400 mt-0.5">
-                    Configure your shipping address for instant dispatch
+                    {isEditingAddress ? 'Modify your shipping address for instant dispatch' : 'Configure your shipping address for instant dispatch'}
                   </p>
                 </div>
                 <button
@@ -857,7 +948,7 @@ function AccountContent() {
                     disabled={isSavingAddress}
                     className="border border-[#06b6d4] bg-[#06b6d4]/10 hover:bg-[#06b6d4] text-[#06b6d4] hover:text-black px-6 py-2.5 font-mono text-xs font-bold uppercase tracking-wider transition shadow-[0_0_15px_rgba(6,182,212,0.3)] disabled:opacity-50"
                   >
-                    {isSavingAddress ? 'Saving...' : 'Save Address'}
+                    {isSavingAddress ? 'Saving...' : (isEditingAddress ? 'Update Address' : 'Save Address')}
                   </button>
                 </div>
               </form>

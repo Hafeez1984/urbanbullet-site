@@ -119,7 +119,18 @@ export default function AddressesView({
     });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this saved address?')) return;
+    
+    try {
+      await fetch('/api/account/address', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      console.error('Error deleting address:', err);
+    }
+
     const updated = addressList.filter((a) => a.id !== id);
     setAddressList(updated);
     

@@ -219,9 +219,10 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setUser(null);
     localStorage.removeItem('ub_user');
+    sessionStorage.clear();
     const isStatic = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
     if (!isStatic) {
-      await nextAuthSignOut({ redirect: false });
+      await nextAuthSignOut({ callbackUrl: '/account', redirect: true });
     }
   };
 

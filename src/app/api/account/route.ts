@@ -275,8 +275,12 @@ export async function GET(request: Request) {
         };
       });
 
-      // 4. Fallback: extract address from latest order if no saved address was in customer record
-      if (addressesData.length === 0 && wcOrders.length > 0) {
+      // 4. Fallback: extract address from latest order if no saved address was in customer record and not explicitly cleared
+      const isAddressDeleted = customerData?.meta_data?.some(
+        (m: any) => m.key === 'ub_address_deleted' && (m.value === 'true' || m.value === true)
+      );
+
+      if (!isAddressDeleted && !customerData && addressesData.length === 0 && wcOrders.length > 0) {
         const latestOrder = wcOrders[0];
         if (latestOrder.shipping && (latestOrder.shipping.address_1 || latestOrder.shipping.city)) {
           addressesData.push({

@@ -49,6 +49,41 @@ async function fetchWC(endpoint: string, params: Record<string, any> = {}, metho
   return { data };
 }
 
+async function findCustomerByEmail(email: string) {
+  try {
+    const customerRes = await fetchWC('customers', { search: email.toLowerCase(), role: 'all' });
+    if (customerRes.data && Array.isArray(customerRes.data)) {
+      const match = customerRes.data.find(
+        (c: any) => c.email && c.email.toLowerCase() === email.toLowerCase()
+      );
+      if (match) {
+        return match;
+      }
+    }
+  } catch (err) {
+    console.error('Error finding WooCommerce customer:', err);
+  }
+  return null;
+}
+
+const emptyAddress = {
+  first_name: '',
+  last_name: '',
+  company: '',
+  address_1: '',
+  address_2: '',
+  city: '',
+  state: '',
+  postcode: '',
+  country: '',
+  phone: '',
+};
+
+const emptyBilling = {
+  ...emptyAddress,
+  email: '',
+};
+
 export async function PUT(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -76,10 +111,42 @@ export async function PUT(request: Request) {
       );
     }
 
-    const body = await request.json();
-    const { name, address, nearestLandmark, pin, email, contactNumber } = body;
+    const body = await request.json().catch(() => ({}));
+    const { name, address, nearestLandmark, pin, email, contactNumber, clear } = body;
 
-    // Strict validation
+    const customer = await findCustomerByEmail(userEmail);
+    let customerId = customer?.id || null;
+    let customerData = customer;
+
+    // Handle wipe/clear request via PUT
+    if (clear === true || (!name && !address && !pin)) {
+      if (customerId) {
+        const updateRes = await fetchWC(`customers/${customerId}`, {}, 'PUT', {
+          shipping: emptyAddress,
+          billing: emptyBilling,
+          meta_data: [{ key: 'ub_address_deleted', value: 'true' }],
+        });
+        customerData = updateRes.data;
+      } else {
+        const createRes = await fetchWC('customers', {}, 'POST', {
+          email: userEmail.toLowerCase(),
+          first_name: session?.user?.name?.split(' ')[0] || '',
+          last_name: session?.user?.name?.split(' ').slice(1).join(' ') || '',
+          shipping: emptyAddress,
+          billing: emptyBilling,
+          meta_data: [{ key: 'ub_address_deleted', value: 'true' }],
+        });
+        customerData = createRes.data;
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Address cleared successfully.',
+        customer: customerData,
+      });
+    }
+
+    // Strict validation for saving address
     if (!name || !address || !pin || !email || !contactNumber) {
       return NextResponse.json(
         { error: 'All mandatory fields (Name, Address, PIN, E-mail ID, Contact Number) are required.' },
@@ -91,25 +158,6 @@ export async function PUT(request: Request) {
     const nameParts = String(name).trim().split(' ').filter(Boolean);
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
-
-    // 1. Look up WooCommerce customer by email
-    let customerId: number | null = null;
-    let customerData: any = null;
-
-    try {
-      const customerRes = await fetchWC('customers', { search: userEmail.toLowerCase(), role: 'all' });
-      if (customerRes.data && Array.isArray(customerRes.data)) {
-        const match = customerRes.data.find(
-          (c: any) => c.email && c.email.toLowerCase() === userEmail.toLowerCase()
-        );
-        if (match) {
-          customerId = match.id;
-          customerData = match;
-        }
-      }
-    } catch (err) {
-      console.error('Error finding WooCommerce customer for address update:', err);
-    }
 
     // Prepare address payloads
     const shippingPayload: Record<string, any> = {
@@ -133,7 +181,6 @@ export async function PUT(request: Request) {
       country: 'IN',
     };
 
-    // If customer doesn't exist yet, auto-create customer with this address
     if (!customerId) {
       const createRes = await fetchWC('customers', {}, 'POST', {
         email: userEmail.toLowerCase(),
@@ -141,14 +188,14 @@ export async function PUT(request: Request) {
         last_name: lastName,
         shipping: shippingPayload,
         billing: billingPayload,
+        meta_data: [{ key: 'ub_address_deleted', value: 'false' }],
       });
       customerData = createRes.data;
-      customerId = createRes.data?.id;
     } else {
-      // Update existing WooCommerce customer
       const updateRes = await fetchWC(`customers/${customerId}`, {}, 'PUT', {
         shipping: shippingPayload,
         billing: billingPayload,
+        meta_data: [{ key: 'ub_address_deleted', value: 'false' }],
       });
       customerData = updateRes.data;
     }
@@ -162,6 +209,70 @@ export async function PUT(request: Request) {
     console.error('Error in PUT /api/account/address:', error);
     return NextResponse.json(
       { error: 'Failed to update address', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    const userEmail = session?.user?.email;
+
+    if (!userEmail) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Please sign in to clear address.' },
+        { status: 401 }
+      );
+    }
+
+    const consumerKey = process.env.WC_CONSUMER_KEY;
+    const consumerSecret = process.env.WC_CONSUMER_SECRET;
+    const hasCredentials =
+      Boolean(consumerKey) &&
+      Boolean(consumerSecret) &&
+      consumerKey !== 'INSERT_KEY_HERE' &&
+      consumerSecret !== 'INSERT_SECRET_HERE';
+
+    if (!hasCredentials) {
+      return NextResponse.json(
+        { error: 'WooCommerce credentials not configured.' },
+        { status: 500 }
+      );
+    }
+
+    const customer = await findCustomerByEmail(userEmail);
+    let customerId = customer?.id || null;
+    let customerData = customer;
+
+    if (customerId) {
+      const updateRes = await fetchWC(`customers/${customerId}`, {}, 'PUT', {
+        shipping: emptyAddress,
+        billing: emptyBilling,
+        meta_data: [{ key: 'ub_address_deleted', value: 'true' }],
+      });
+      customerData = updateRes.data;
+    } else {
+      const createRes = await fetchWC('customers', {}, 'POST', {
+        email: userEmail.toLowerCase(),
+        first_name: session?.user?.name?.split(' ')[0] || '',
+        last_name: session?.user?.name?.split(' ').slice(1).join(' ') || '',
+        shipping: emptyAddress,
+        billing: emptyBilling,
+        meta_data: [{ key: 'ub_address_deleted', value: 'true' }],
+      });
+      customerData = createRes.data;
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Address wiped successfully.',
+      customer: customerData,
+    });
+  } catch (error: any) {
+    console.error('Error in DELETE /api/account/address:', error);
+    return NextResponse.json(
+      { error: 'Failed to clear address', details: error.message },
       { status: 500 }
     );
   }
