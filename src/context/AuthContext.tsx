@@ -16,8 +16,8 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (email: string, password: string, firstName: string, lastName: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string, turnstileToken?: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, password: string, firstName: string, lastName: string, turnstileToken?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateUser: (updatedUser: Partial<User>) => void;
 }
@@ -89,7 +89,7 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearTimeout(safetyTimer);
   }, [session, status]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, turnstileToken?: string) => {
     setIsLoading(true);
     const isStatic = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
     if (isStatic) {
@@ -121,6 +121,7 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
       const result = await signIn('credentials', {
         email,
         password,
+        turnstileToken,
         redirect: false,
       });
 
@@ -153,7 +154,7 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (email: string, password: string, firstName: string, lastName: string) => {
+  const signup = async (email: string, password: string, firstName: string, lastName: string, turnstileToken?: string) => {
     setIsLoading(true);
     const isStatic = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true';
     if (isStatic) {
@@ -187,6 +188,7 @@ const AuthContextInternal: React.FC<{ children: React.ReactNode }> = ({ children
         password,
         firstName,
         lastName,
+        turnstileToken,
         isSignup: 'true',
         redirect: false,
       });

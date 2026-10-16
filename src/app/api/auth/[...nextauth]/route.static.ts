@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export const dynamic = "force-static";
 
@@ -36,22 +37,50 @@ const handler = NextAuth({
         firstName: { label: "First Name", type: "text" },
         lastName: { label: "Last Name", type: "text" },
         isSignup: { label: "Is Signup", type: "text" },
+        turnstileToken: { label: "Turnstile Token", type: "text" },
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
+      async authorize(credentials, req) {
+        const creds = credentials as Record<string, string | undefined> | undefined;
+        const turnstileToken =
+          creds?.turnstileToken ||
+          creds?.["cf-turnstile-response"] ||
+          creds?.turnstile;
+
+        const forwardedFor = req?.headers?.["x-forwarded-for"];
+        const realIp = req?.headers?.["x-real-ip"];
+        const clientIp =
+          (typeof forwardedFor === "string" ? forwardedFor.split(",")[0]?.trim() : undefined) ||
+          (typeof realIp === "string" ? realIp : undefined);
+
+        if (!turnstileToken) {
+          throw new Error("Cloudflare Turnstile token is required.");
         }
 
-        const email = credentials.email.toLowerCase();
+        const verification = await verifyTurnstileToken(turnstileToken, clientIp);
+        if (!verification.success) {
+          throw new Error("Cloudflare Turnstile verification failed. Please try again.");
+        }
+
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Email and password are required.");
+        }
+
+        const email = credentials.email.toLowerCase().trim();
         const password = credentials.password;
 
-        // Custom Sign Up flow simulation
+        if (!email.includes("@")) {
+          throw new Error("Invalid email address.");
+        }
+
         if (credentials.isSignup === "true") {
+          if (password.length < 6) {
+            throw new Error("Password must be at least 6 characters.");
+          }
           const firstName = credentials.firstName || "New";
           const lastName = credentials.lastName || "User";
           return {
             id: email,
-            name: `${firstName} ${lastName}`,
+            name: `${firstName} ${lastName}`.trim(),
             email: email,
           };
         }
@@ -74,7 +103,7 @@ const handler = NextAuth({
           };
         }
 
-        return null;
+        throw new Error("Invalid email or password (minimum 6 characters).");
       },
     }),
   ],

@@ -1,22 +1,85 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
 
 type Mode = 'login' | 'signup';
 
 export default function AuthCard() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [notificationsAccepted, setNotificationsAccepted] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const isLogin = mode === 'login';
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleModeChange = (newMode: Mode) => {
+    setMode(newMode);
+    setTurnstileToken(null);
+    setError(null);
+    turnstileRef.current?.reset();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-    signIn('credentials', { email, callbackUrl: '/account' });
+    if (!email || !password) {
+      setError('Please provide both email and password.');
+      return;
+    }
+
+    if (!turnstileToken) {
+      setError('Please complete the Cloudflare security verification.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await signIn('credentials', {
+        email,
+        password,
+        turnstileToken,
+        isSignup: isLogin ? 'false' : 'true',
+        redirect: false,
+        callbackUrl: '/account',
+      });
+
+      if (res?.error) {
+        setError(res.error);
+        turnstileRef.current?.reset();
+        setTurnstileToken(null);
+        setIsSubmitting(false);
+      } else if (res?.ok) {
+        if (typeof window !== 'undefined') {
+          window.location.href = '/account';
+        } else {
+          router.push('/account');
+          router.refresh();
+        }
+      } else {
+        setError('Authentication failed. Please try again.');
+        turnstileRef.current?.reset();
+        setTurnstileToken(null);
+        setIsSubmitting(false);
+      }
+    } catch (err: any) {
+      console.error('Sign-in error:', err);
+      setError(err?.message || 'An unexpected authentication error occurred.');
+      turnstileRef.current?.reset();
+      setTurnstileToken(null);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -93,7 +156,7 @@ export default function AuthCard() {
               <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/15" />
             </div>
 
-            {/* Passwordless Email Form */}
+            {/* Email & Password Credentials Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label
@@ -110,6 +173,26 @@ export default function AuthCard() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@urbanbullet.co"
+                  className="w-full border border-white/10 bg-black/50 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-[#D4FF3F]/70 focus:bg-black/70 focus:ring-1 focus:ring-[#D4FF3F]/40"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="password"
+                  className="block font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500"
+                >
+                  Enter your password
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="•••••••• (min. 6 characters)"
                   className="w-full border border-white/10 bg-black/50 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-[#D4FF3F]/70 focus:bg-black/70 focus:ring-1 focus:ring-[#D4FF3F]/40"
                 />
               </div>
@@ -139,11 +222,50 @@ export default function AuthCard() {
                 </div>
               )}
 
+              {error && (
+                <div className="border border-red-500/40 bg-red-500/10 px-3.5 py-2.5 font-mono text-xs text-red-400">
+                  <div className="flex items-center gap-2">
+                    <svg className="h-4 w-4 shrink-0 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <span>{error}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Real Cloudflare Turnstile Widget */}
+              <div className="flex justify-center pt-2 min-h-[65px]">
+                <Turnstile
+                  key={mode}
+                  ref={turnstileRef}
+                  siteKey={siteKey}
+                  onSuccess={(token) => {
+                    setTurnstileToken(token);
+                    setError(null);
+                  }}
+                  onExpire={() => {
+                    setTurnstileToken(null);
+                  }}
+                  onError={() => {
+                    setTurnstileToken(null);
+                    setError('Turnstile verification failed. Please try again.');
+                  }}
+                  options={{
+                    theme: 'dark',
+                    size: 'normal',
+                  }}
+                />
+              </div>
+
+              {/* Submit Button - Disabled until Turnstile onSuccess provides a valid token */}
               <button
                 type="submit"
-                className="mt-3 w-full border border-[#D4FF3F] bg-[#D4FF3F] px-4 py-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.28em] text-black transition hover:bg-[#E6FF6B] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4FF3F]/60 active:translate-y-px"
+                disabled={!turnstileToken || isSubmitting}
+                className="mt-3 w-full border border-[#D4FF3F] bg-[#D4FF3F] px-4 py-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.28em] text-black transition hover:bg-[#E6FF6B] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4FF3F]/60 active:translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#D4FF3F]"
               >
-                Continue
+                {isSubmitting
+                  ? (isLogin ? 'Authenticating...' : 'Registering...')
+                  : (isLogin ? 'Continue' : 'Sign Up')}
               </button>
             </form>
 
@@ -154,7 +276,7 @@ export default function AuthCard() {
                   Don't have an account?{' '}
                   <button
                     type="button"
-                    onClick={() => setMode('signup')}
+                    onClick={() => handleModeChange('signup')}
                     className="text-[#D4FF3F] underline decoration-dotted underline-offset-4 transition hover:text-[#E6FF6B]"
                   >
                     Sign up
@@ -165,7 +287,7 @@ export default function AuthCard() {
                   Already have an account?{' '}
                   <button
                     type="button"
-                    onClick={() => setMode('login')}
+                    onClick={() => handleModeChange('login')}
                     className="text-[#D4FF3F] underline decoration-dotted underline-offset-4 transition hover:text-[#E6FF6B]"
                   >
                     Log in
@@ -173,24 +295,6 @@ export default function AuthCard() {
                 </>
               )}
             </p>
-
-            {/* Mock Cloudflare Turnstile Success Box */}
-            <div className="mt-6 flex items-center justify-between border border-white/10 bg-black/60 px-3.5 py-2.5 font-mono text-[10px]">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-[#D4FF3F]/20 text-[#D4FF3F]">
-                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <span className="tracking-wider text-zinc-300">Success!</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest text-zinc-500">
-                <svg className="h-3.5 w-3.5 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/>
-                </svg>
-                <span>Cloudflare Turnstile</span>
-              </div>
-            </div>
           </div>
 
           <div className="border-t border-white/10 bg-black/40 px-4 py-2 text-center font-mono text-[9px] uppercase tracking-[0.35em] text-zinc-600">
