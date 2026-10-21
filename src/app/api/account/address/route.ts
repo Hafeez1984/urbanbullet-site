@@ -112,14 +112,40 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { name, address, nearestLandmark, pin, email, contactNumber, clear } = body;
+    const {
+      name,
+      firstName: rawFirstName,
+      lastName: rawLastName,
+      address,
+      address1,
+      nearestLandmark,
+      address2,
+      city,
+      state,
+      pin,
+      postcode,
+      email,
+      contactNumber,
+      phone,
+      clear,
+      country,
+    } = body;
 
     const customer = await findCustomerByEmail(userEmail);
     let customerId = customer?.id || null;
     let customerData = customer;
 
+    const resolvedAddress1 = (address1 || address || '').trim();
+    const resolvedAddress2 = (address2 || nearestLandmark || '').trim();
+    const resolvedPostcode = (postcode || pin || '').trim();
+    const resolvedPhone = (phone || contactNumber || '').trim();
+    const resolvedEmail = (email || userEmail || '').trim();
+    const resolvedCity = (city || '').trim();
+    const resolvedState = (state || '').trim();
+    const resolvedCountry = (country || 'IN').trim().toUpperCase();
+
     // Handle wipe/clear request via PUT
-    if (clear === true || (!name && !address && !pin)) {
+    if (clear === true || (!name && !resolvedAddress1 && !resolvedPostcode)) {
       if (customerId) {
         const updateRes = await fetchWC(`customers/${customerId}`, {}, 'PUT', {
           shipping: emptyAddress,
@@ -147,38 +173,50 @@ export async function PUT(request: Request) {
     }
 
     // Strict validation for saving address
-    if (!name || !address || !pin || !email || !contactNumber) {
+    if (!resolvedAddress1 || !resolvedPostcode || !resolvedPhone) {
       return NextResponse.json(
-        { error: 'All mandatory fields (Name, Address, PIN, E-mail ID, Contact Number) are required.' },
+        { error: 'Mandatory address fields (Address, PIN/Postcode, Contact Number) are required.' },
         { status: 400 }
       );
     }
 
     // Split Name into first_name and last_name
-    const nameParts = String(name).trim().split(' ').filter(Boolean);
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
+    let firstName = (rawFirstName || '').trim();
+    let lastName = (rawLastName || '').trim();
+    if (!firstName && name) {
+      const nameParts = String(name).trim().split(' ').filter(Boolean);
+      firstName = nameParts[0] || '';
+      lastName = nameParts.slice(1).join(' ') || '';
+    }
+    if (!firstName) {
+      firstName = session?.user?.name?.split(' ')[0] || 'Urban';
+      lastName = session?.user?.name?.split(' ').slice(1).join(' ') || 'Bullet';
+    }
 
     // Prepare address payloads
     const shippingPayload: Record<string, any> = {
       first_name: firstName,
       last_name: lastName,
-      address_1: address.trim(),
-      address_2: (nearestLandmark || '').trim(),
-      postcode: pin.trim(),
-      phone: contactNumber.trim(),
-      country: 'IN', // Default country India
+      address_1: resolvedAddress1,
+      address_2: resolvedAddress2,
+      city: resolvedCity,
+      state: resolvedState,
+      postcode: resolvedPostcode,
+      phone: resolvedPhone,
+      country: resolvedCountry || 'IN',
     };
 
     const billingPayload: Record<string, any> = {
       first_name: firstName,
       last_name: lastName,
-      address_1: address.trim(),
-      address_2: (nearestLandmark || '').trim(),
-      postcode: pin.trim(),
-      email: email.trim(),
-      phone: contactNumber.trim(),
-      country: 'IN',
+      address_1: resolvedAddress1,
+      address_2: resolvedAddress2,
+      city: resolvedCity,
+      state: resolvedState,
+      postcode: resolvedPostcode,
+      email: resolvedEmail,
+      phone: resolvedPhone,
+      country: resolvedCountry || 'IN',
     };
 
     if (!customerId) {

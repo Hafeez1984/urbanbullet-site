@@ -4,77 +4,110 @@ import { wcApi } from '@/lib/woocommerce-client';
 
 export const dynamic = 'force-dynamic';
 
-async function getOrCreateCustomerId(
+interface CustomerDbData {
+  customerId: number | null;
+  customerShipping: Record<string, any>;
+  customerBilling: Record<string, any>;
+  orderShipping: Record<string, any>;
+  orderBilling: Record<string, any>;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+/**
+ * Extract user details and saved shipping/billing addresses from WooCommerce customer
+ * record and recent order history in the database.
+ */
+async function getCustomerAndAddress(
   email?: string,
   name?: string,
   providedCustomerId?: number | string
-): Promise<number | null> {
+): Promise<CustomerDbData> {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  let foundCustomer: any = null;
+
+  // 1. If customerId provided, query directly
   if (providedCustomerId && Number(providedCustomerId) > 0) {
-    return Number(providedCustomerId);
-  }
-  if (!email || !email.trim()) {
-    return null;
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-
-  // 1. Search for an existing customer_id matching the NextAuth email
-  try {
-    const searchRes = await wcApi.get('customers', { search: normalizedEmail, role: 'all' });
-    if (searchRes.data && Array.isArray(searchRes.data)) {
-      const existing = searchRes.data.find(
-        (c: any) => c.email && c.email.toLowerCase() === normalizedEmail
-      );
-      if (existing && existing.id) {
-        return existing.id;
-      }
-    }
-  } catch (err: any) {
-    const errData = err?.response?.data || err?.message || err;
-    console.error('Error searching for WooCommerce customer:', JSON.stringify(errData, null, 2));
-  }
-
-  // 2. Format name with safe fallbacks ('Urban', 'Bullet') if missing from NextAuth session
-  const nameParts = (name || '').trim().split(' ').filter(Boolean);
-  const firstName = nameParts[0] || 'Urban';
-  const lastName = nameParts.slice(1).join(' ') || 'Bullet';
-
-  try {
-    const createRes = await wcApi.post('customers', {
-      email: normalizedEmail,
-      first_name: firstName,
-      last_name: lastName,
-      billing: {
-        first_name: firstName,
-        last_name: lastName,
-        email: normalizedEmail,
-      },
-    });
-    if (createRes.data && createRes.data.id) {
-      return createRes.data.id;
-    }
-  } catch (createErr: any) {
-    const errData = createErr?.response?.data || createErr?.message || createErr;
-    console.error('Failed to create WooCommerce customer record:', JSON.stringify(errData, null, 2));
-
-    // If creation failed (e.g. existing email/user conflict), attempt fallback search
     try {
-      const fallbackSearch = await wcApi.get('customers', { search: normalizedEmail, role: 'all' });
-      if (fallbackSearch.data && Array.isArray(fallbackSearch.data)) {
-        const existing = fallbackSearch.data.find(
+      const custRes = await wcApi.get(`customers/${Number(providedCustomerId)}`);
+      if (custRes?.data && custRes.data.id) {
+        foundCustomer = custRes.data;
+      }
+    } catch (err: any) {
+      console.warn(`Could not fetch WooCommerce customer by ID ${providedCustomerId}:`, err?.message || err);
+    }
+  }
+
+  // 2. Query WooCommerce customers by email if not found yet
+  if (!foundCustomer && normalizedEmail) {
+    try {
+      const searchRes = await wcApi.get('customers', { search: normalizedEmail, role: 'all' });
+      if (searchRes.data && Array.isArray(searchRes.data)) {
+        const match = searchRes.data.find(
           (c: any) => c.email && c.email.toLowerCase() === normalizedEmail
         );
-        if (existing && existing.id) {
-          return existing.id;
+        if (match && match.id) {
+          foundCustomer = match;
         }
       }
     } catch (err: any) {
-      const fallbackErrData = err?.response?.data || err?.message || err;
-      console.error('Error in fallback customer search:', JSON.stringify(fallbackErrData, null, 2));
+      const errData = err?.response?.data || err?.message || err;
+      console.error('Error searching WooCommerce customer by email:', JSON.stringify(errData, null, 2));
     }
   }
 
-  return null;
+  const customerShipping = foundCustomer?.shipping || {};
+  const customerBilling = foundCustomer?.billing || {};
+
+  let orderShipping: Record<string, any> = {};
+  let orderBilling: Record<string, any> = {};
+
+  // 3. Fallback: Query past orders from WooCommerce database to extract address if customer address is empty
+  const hasIncompleteAddress =
+    !customerShipping.address_1 || !customerShipping.postcode || !customerShipping.phone;
+
+  if (hasIncompleteAddress && (foundCustomer?.id || normalizedEmail)) {
+    try {
+      const orderSearchParams: any = { per_page: 5 };
+      if (foundCustomer?.id) {
+        orderSearchParams.customer = foundCustomer.id;
+      } else {
+        orderSearchParams.search = normalizedEmail;
+      }
+
+      const pastOrdersRes = await wcApi.get('orders', orderSearchParams);
+      if (pastOrdersRes?.data && Array.isArray(pastOrdersRes.data) && pastOrdersRes.data.length > 0) {
+        // Find newest order with a non-empty shipping or billing address
+        const orderWithAddress = pastOrdersRes.data.find(
+          (o: any) =>
+            (o.shipping && (o.shipping.address_1 || o.shipping.postcode || o.shipping.phone)) ||
+            (o.billing && (o.billing.address_1 || o.billing.postcode || o.billing.phone))
+        );
+        if (orderWithAddress) {
+          if (orderWithAddress.shipping) {
+            orderShipping = orderWithAddress.shipping;
+          }
+          if (orderWithAddress.billing) {
+            orderBilling = orderWithAddress.billing;
+          }
+        }
+      }
+    } catch (orderErr: any) {
+      console.warn('Error querying past orders for address fallback:', orderErr?.message || orderErr);
+    }
+  }
+
+  return {
+    customerId: foundCustomer?.id || null,
+    customerShipping,
+    customerBilling,
+    orderShipping,
+    orderBilling,
+    email: foundCustomer?.email || normalizedEmail,
+    firstName: foundCustomer?.first_name || '',
+    lastName: foundCustomer?.last_name || '',
+  };
 }
 
 export async function POST(request: Request) {
@@ -88,6 +121,7 @@ export async function POST(request: Request) {
       cart_items,
       billing,
       shipping,
+      address,
       customer_id,
       email,
       name,
@@ -100,7 +134,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Require authenticated session email (no hardcoded test email fallback allowed)
+    // Require authenticated session email
     if (!email || !email.trim()) {
       return NextResponse.json(
         { error: 'Unauthorized. Authenticated session email is required to process order.' },
@@ -133,46 +167,353 @@ export async function POST(request: Request) {
       );
     }
 
-    // Signature verified! Get or create customer ID matching NextAuth session email
-    const finalCustomerId = await getOrCreateCustomerId(email, name, customer_id);
+    // Signature verified! Extract user shipping and billing address from frontend state or database
+    const dbData = await getCustomerAndAddress(email, name, customer_id);
+    let finalCustomerId = dbData.customerId;
 
-    // Format first and last names with safe fallbacks ('Urban', 'Bullet') if missing
+    const frontendShipping = shipping || {};
+    const frontendBilling = billing || {};
+    const frontendAddress = address || {};
+    const dbCustomerShipping = dbData.customerShipping;
+    const dbCustomerBilling = dbData.customerBilling;
+    const dbOrderShipping = dbData.orderShipping;
+    const dbOrderBilling = dbData.orderBilling;
+
     const nameParts = (name || '').trim().split(' ').filter(Boolean);
-    const defaultFirstName = nameParts[0] || 'Urban';
-    const defaultLastName = nameParts.slice(1).join(' ') || 'Bullet';
+    const defaultFirstName = nameParts[0] || dbData.firstName || 'Urban';
+    const defaultLastName = nameParts.slice(1).join(' ') || dbData.lastName || 'Bullet';
 
-    const billingPayload = {
-      first_name: billing?.first_name || defaultFirstName,
-      last_name: billing?.last_name || defaultLastName,
-      email: billing?.email || email,
-      phone: billing?.phone || '',
-      address_1: billing?.address_1 || '',
-      address_2: billing?.address_2 || '',
-      city: billing?.city || '',
-      state: billing?.state || '',
-      postcode: billing?.postcode || '',
-      country: billing?.country || 'IN',
+    const pickFirstNonEmpty = (...candidates: any[]): string => {
+      for (const val of candidates) {
+        if (typeof val === 'string' && val.trim().length > 0) {
+          return val.trim();
+        }
+        if (typeof val === 'number') {
+          return String(val);
+        }
+      }
+      return '';
     };
 
-    const shippingPayload = shipping ? {
-      first_name: shipping.first_name || billingPayload.first_name,
-      last_name: shipping.last_name || billingPayload.last_name,
-      address_1: shipping.address_1 || billingPayload.address_1,
-      address_2: shipping.address_2 || billingPayload.address_2,
-      city: shipping.city || billingPayload.city,
-      state: shipping.state || billingPayload.state,
-      postcode: shipping.postcode || billingPayload.postcode,
-      country: shipping.country || billingPayload.country,
-    } : {
-      first_name: billingPayload.first_name,
-      last_name: billingPayload.last_name,
-      address_1: billingPayload.address_1,
-      address_2: billingPayload.address_2,
-      city: billingPayload.city,
-      state: billingPayload.state,
-      postcode: billingPayload.postcode,
-      country: billingPayload.country,
+    // Strictly resolve first and last names
+    const resolvedFirstName = pickFirstNonEmpty(
+      frontendShipping.first_name,
+      frontendBilling.first_name,
+      frontendAddress.firstName,
+      frontendAddress.first_name,
+      frontendAddress.name ? frontendAddress.name.trim().split(' ')[0] : null,
+      dbCustomerShipping.first_name,
+      dbCustomerBilling.first_name,
+      dbOrderShipping.first_name,
+      dbOrderBilling.first_name,
+      defaultFirstName
+    );
+
+    const resolvedLastName = pickFirstNonEmpty(
+      frontendShipping.last_name,
+      frontendBilling.last_name,
+      frontendAddress.lastName,
+      frontendAddress.last_name,
+      frontendAddress.name ? frontendAddress.name.trim().split(' ').slice(1).join(' ') : null,
+      dbCustomerShipping.last_name,
+      dbCustomerBilling.last_name,
+      dbOrderShipping.last_name,
+      dbOrderBilling.last_name,
+      defaultLastName
+    );
+
+    // Strictly resolve address_1 and address_2
+    const resolvedAddress1 = pickFirstNonEmpty(
+      frontendShipping.address_1,
+      frontendShipping.address1,
+      frontendBilling.address_1,
+      frontendBilling.address1,
+      frontendAddress.address_1,
+      frontendAddress.address1,
+      frontendAddress.line1,
+      frontendAddress.address,
+      dbCustomerShipping.address_1,
+      dbCustomerBilling.address_1,
+      dbOrderShipping.address_1,
+      dbOrderBilling.address_1
+    );
+
+    const resolvedAddress2 = pickFirstNonEmpty(
+      frontendShipping.address_2,
+      frontendShipping.address2,
+      frontendBilling.address_2,
+      frontendBilling.address2,
+      frontendAddress.address_2,
+      frontendAddress.address2,
+      frontendAddress.line2,
+      frontendAddress.nearestLandmark,
+      dbCustomerShipping.address_2,
+      dbCustomerBilling.address_2,
+      dbOrderShipping.address_2,
+      dbOrderBilling.address_2
+    );
+
+    // Strictly resolve city and state
+    const resolvedCity = pickFirstNonEmpty(
+      frontendShipping.city,
+      frontendBilling.city,
+      frontendAddress.city,
+      dbCustomerShipping.city,
+      dbCustomerBilling.city,
+      dbOrderShipping.city,
+      dbOrderBilling.city
+    );
+
+    const resolvedState = pickFirstNonEmpty(
+      frontendShipping.state,
+      frontendBilling.state,
+      frontendAddress.state,
+      dbCustomerShipping.state,
+      dbCustomerBilling.state,
+      dbOrderShipping.state,
+      dbOrderBilling.state
+    );
+
+    // Strictly resolve postcode (strictly required by Qikink)
+    const resolvedPostcode = pickFirstNonEmpty(
+      frontendShipping.postcode,
+      frontendShipping.post_code,
+      frontendShipping.pin,
+      frontendBilling.postcode,
+      frontendBilling.post_code,
+      frontendBilling.pin,
+      frontendAddress.postcode,
+      frontendAddress.post_code,
+      frontendAddress.pin,
+      dbCustomerShipping.postcode,
+      dbCustomerBilling.postcode,
+      dbOrderShipping.postcode,
+      dbOrderBilling.postcode
+    );
+
+    // Strictly resolve country
+    const resolvedCountry = pickFirstNonEmpty(
+      frontendShipping.country,
+      frontendBilling.country,
+      frontendAddress.country,
+      dbCustomerShipping.country,
+      dbCustomerBilling.country,
+      dbOrderShipping.country,
+      dbOrderBilling.country,
+      'IN'
+    ).toUpperCase();
+
+    // Strictly resolve phone number (strictly required by Qikink)
+    const resolvedPhone = pickFirstNonEmpty(
+      frontendShipping.phone,
+      frontendShipping.contactNumber,
+      frontendBilling.phone,
+      frontendBilling.contactNumber,
+      frontendAddress.phone,
+      frontendAddress.contactNumber,
+      dbCustomerShipping.phone,
+      dbCustomerBilling.phone,
+      dbOrderShipping.phone,
+      dbOrderBilling.phone
+    );
+
+    const resolvedEmail = pickFirstNonEmpty(
+      frontendBilling.email,
+      frontendShipping.email,
+      frontendAddress.email,
+      email,
+      dbCustomerBilling.email,
+      dbData.email
+    ).toLowerCase();
+
+    // Map strictly to WooCommerce schema for shipping object
+    const shippingPayload: {
+      first_name: string;
+      last_name: string;
+      address_1: string;
+      address_2: string;
+      city: string;
+      state: string;
+      postcode: string;
+      country: string;
+      phone: string;
+    } = {
+      first_name: resolvedFirstName,
+      last_name: resolvedLastName,
+      address_1: resolvedAddress1,
+      address_2: resolvedAddress2,
+      city: resolvedCity,
+      state: resolvedState,
+      postcode: resolvedPostcode,
+      country: resolvedCountry || 'IN',
+      phone: resolvedPhone,
     };
+
+    // Map strictly to WooCommerce schema for billing object
+    const billingPayload: {
+      first_name: string;
+      last_name: string;
+      address_1: string;
+      address_2: string;
+      city: string;
+      state: string;
+      postcode: string;
+      country: string;
+      email: string;
+      phone: string;
+    } = {
+      first_name: pickFirstNonEmpty(frontendBilling.first_name, resolvedFirstName),
+      last_name: pickFirstNonEmpty(frontendBilling.last_name, resolvedLastName),
+      address_1: pickFirstNonEmpty(frontendBilling.address_1, frontendBilling.address1, resolvedAddress1),
+      address_2: pickFirstNonEmpty(frontendBilling.address_2, frontendBilling.address2, resolvedAddress2),
+      city: pickFirstNonEmpty(frontendBilling.city, resolvedCity),
+      state: pickFirstNonEmpty(frontendBilling.state, resolvedState),
+      postcode: pickFirstNonEmpty(frontendBilling.postcode, frontendBilling.pin, resolvedPostcode),
+      country: pickFirstNonEmpty(frontendBilling.country, resolvedCountry, 'IN').toUpperCase(),
+      email: resolvedEmail,
+      phone: pickFirstNonEmpty(frontendBilling.phone, frontendBilling.contactNumber, resolvedPhone),
+    };
+
+    // Ensure phone and postcode are synchronized across both objects so Qikink never rejects
+    if (!shippingPayload.phone && billingPayload.phone) {
+      shippingPayload.phone = billingPayload.phone;
+    }
+    if (!billingPayload.phone && shippingPayload.phone) {
+      billingPayload.phone = shippingPayload.phone;
+    }
+    if (!shippingPayload.postcode && billingPayload.postcode) {
+      shippingPayload.postcode = billingPayload.postcode;
+    }
+    if (!billingPayload.postcode && shippingPayload.postcode) {
+      billingPayload.postcode = shippingPayload.postcode;
+    }
+
+    // Persist or create WooCommerce customer record in database with resolved addresses
+    if (!finalCustomerId) {
+      try {
+        const createRes = await wcApi.post('customers', {
+          email: resolvedEmail,
+          first_name: shippingPayload.first_name,
+          last_name: shippingPayload.last_name,
+          billing: billingPayload,
+          shipping: shippingPayload,
+        });
+        if (createRes.data && createRes.data.id) {
+          finalCustomerId = createRes.data.id;
+        }
+      } catch (createErr: any) {
+        console.error('Failed to create WooCommerce customer record:', createErr?.message || createErr);
+      }
+    } else if (
+      finalCustomerId &&
+      shippingPayload.address_1 &&
+      shippingPayload.postcode &&
+      shippingPayload.phone &&
+      (!dbCustomerShipping.address_1 || !dbCustomerShipping.postcode || !dbCustomerShipping.phone)
+    ) {
+      try {
+        await wcApi.put(`customers/${finalCustomerId}`, {
+          shipping: shippingPayload,
+          billing: billingPayload,
+        });
+      } catch (updateErr: any) {
+        console.warn('Could not persist updated address to WooCommerce customer:', updateErr?.message || updateErr);
+      }
+    }
+
+    // Format line_items strictly: ONLY pass product_id, variation_id, and quantity.
+    // DO NOT pass custom SKUs or names from frontend, preserving raw WooCommerce catalog data for print-on-demand sync.
+    const lineItems = await Promise.all(
+      (cart_items || []).map(async (item: any) => {
+        let numericProductId = Number(item.databaseId || item.productId || item.product_id || item.id);
+        let hasValidProductId = Number.isInteger(numericProductId) && numericProductId > 0;
+
+        if (!hasValidProductId && item.slug) {
+          try {
+            const prodSearch = await wcApi.get('products', { slug: item.slug });
+            if (prodSearch.data && Array.isArray(prodSearch.data) && prodSearch.data[0]?.id) {
+              numericProductId = prodSearch.data[0].id;
+              hasValidProductId = true;
+            }
+          } catch (e) {}
+        }
+
+        if (!hasValidProductId) {
+          console.warn('Skipping cart item without valid numeric product_id:', item);
+          return null;
+        }
+
+        let variationId = Number(item.variation_id || item.variationId) || 0;
+
+        // If variable product in WooCommerce and variationId is missing or 0, resolve from catalog variations
+        if (!variationId || variationId <= 0) {
+          try {
+            const prodRes = await wcApi.get(`products/${numericProductId}`);
+            const wcProd = prodRes?.data;
+            if (
+              wcProd &&
+              (wcProd.type === 'variable' ||
+                (Array.isArray(wcProd.variations) && wcProd.variations.length > 0))
+            ) {
+              const varRes = await wcApi.get(`products/${numericProductId}/variations`, {
+                per_page: 100,
+              });
+              const variations = varRes?.data || [];
+              if (variations.length > 0) {
+                const itemSize = (item.size || '').toLowerCase().trim();
+                const itemColor = (item.color || '').toLowerCase().trim();
+
+                const match = variations.find((v: any) => {
+                  return (v.attributes || []).every((attr: any) => {
+                    const attrName = (attr.name || '').toLowerCase();
+                    const attrOpt = (attr.option || '').toLowerCase().trim();
+                    if (!attrOpt) return true;
+                    if (attrName.includes('size')) {
+                      return itemSize && attrOpt === itemSize;
+                    }
+                    if (attrName.includes('color') || attrName.includes('colour')) {
+                      return itemColor && attrOpt === itemColor;
+                    }
+                    return true;
+                  });
+                });
+
+                if (match) {
+                  variationId = match.id;
+                } else {
+                  variationId = variations[0].id;
+                }
+              }
+            }
+          } catch (lookupErr: any) {
+            console.error(
+              `Error resolving variation for product ${numericProductId}:`,
+              lookupErr?.message || lookupErr
+            );
+          }
+        }
+
+        const quantity = Math.max(1, Number(item.quantity) || 1);
+
+        // Strictly ONLY include product_id, variation_id (if applicable), and quantity
+        const lineItemObj: {
+          product_id: number;
+          quantity: number;
+          variation_id?: number;
+        } = {
+          product_id: numericProductId,
+          quantity,
+        };
+
+        if (variationId && variationId > 0) {
+          lineItemObj.variation_id = variationId;
+        }
+
+        return lineItemObj;
+      })
+    );
+
+    const validLineItems = lineItems.filter(Boolean);
 
     let wcOrder = null;
 
@@ -194,6 +535,9 @@ export async function POST(request: Request) {
           billing: billingPayload,
           shipping: shippingPayload,
         };
+        if (validLineItems.length > 0) {
+          updatePayload.line_items = validLineItems;
+        }
         if (finalCustomerId) {
           updatePayload.customer_id = finalCustomerId;
         }
@@ -209,102 +553,6 @@ export async function POST(request: Request) {
     // If order was not updated, create a new WooCommerce order
     if (!wcOrder) {
       try {
-        // Format line_items to ensure WooCommerce product reference includes both product_id and variation_id (if applicable)
-        const lineItems = await Promise.all(
-          (cart_items || []).map(async (item: any) => {
-            const numericProductId = Number(item.databaseId || item.productId || item.product_id || item.id);
-            const hasValidProductId = Number.isInteger(numericProductId) && numericProductId > 0;
-
-            let variationId = Number(item.variation_id || item.variationId) || 0;
-            let sku = item.sku;
-
-            // If we have a valid product_id but no variation_id, check if it's a variable product in WooCommerce
-            if (hasValidProductId && (!variationId || variationId <= 0)) {
-              try {
-                const prodRes = await wcApi.get(`products/${numericProductId}`);
-                const wcProd = prodRes?.data;
-                if (
-                  wcProd &&
-                  (wcProd.type === 'variable' ||
-                    (Array.isArray(wcProd.variations) && wcProd.variations.length > 0))
-                ) {
-                  const varRes = await wcApi.get(`products/${numericProductId}/variations`, {
-                    per_page: 100,
-                  });
-                  const variations = varRes?.data || [];
-                  if (variations.length > 0) {
-                    const itemSize = (item.size || '').toLowerCase().trim();
-                    const itemColor = (item.color || '').toLowerCase().trim();
-
-                    const match = variations.find((v: any) => {
-                      return (v.attributes || []).every((attr: any) => {
-                        const attrName = (attr.name || '').toLowerCase();
-                        const attrOpt = (attr.option || '').toLowerCase().trim();
-                        if (!attrOpt) return true;
-                        if (attrName.includes('size')) {
-                          return itemSize && attrOpt === itemSize;
-                        }
-                        if (attrName.includes('color') || attrName.includes('colour')) {
-                          return itemColor && attrOpt === itemColor;
-                        }
-                        return true;
-                      });
-                    });
-
-                    if (match) {
-                      variationId = match.id;
-                      sku = match.sku || sku;
-                    } else {
-                      // Fallback to first available variation so variation_id and SKU are never omitted
-                      variationId = variations[0].id;
-                      sku = variations[0].sku || sku;
-                    }
-                  }
-                }
-              } catch (lookupErr: any) {
-                console.error(
-                  `Error resolving variation for product ${numericProductId}:`,
-                  lookupErr?.message || lookupErr
-                );
-              }
-            }
-
-            const quantity = Number(item.quantity) || 1;
-
-            if (hasValidProductId) {
-              const lineItemObj: any = {
-                product_id: numericProductId,
-                quantity,
-              };
-
-              // Ensure variation_id is passed for variable products
-              if (variationId && variationId > 0) {
-                lineItemObj.variation_id = variationId;
-              }
-
-              if (item.price !== undefined && item.price !== null) {
-                lineItemObj.price = String(item.price);
-              }
-
-              if (sku) {
-                lineItemObj.sku = sku;
-              }
-
-              return lineItemObj;
-            }
-
-            // Fallback to SKU for non-numeric product IDs (e.g. mock items like 'prod_1')
-            return {
-              sku: String(sku || item.id || 'UB-STREETWEAR'),
-              name: item.name || 'Streetwear Item',
-              quantity,
-              price: String(item.price || 0),
-            };
-          })
-        );
-
-        console.log('Submitting WooCommerce order line_items payload:', JSON.stringify(lineItems, null, 2));
-
         const newOrderData: any = {
           payment_method: 'razorpay',
           payment_method_title: 'Razorpay',
@@ -313,12 +561,14 @@ export async function POST(request: Request) {
           meta_data: paymentMetaData,
           billing: billingPayload,
           shipping: shippingPayload,
-          line_items: lineItems,
+          line_items: validLineItems,
         };
 
         if (finalCustomerId) {
           newOrderData.customer_id = finalCustomerId;
         }
+
+        console.log('Creating WooCommerce order with payload:', JSON.stringify(newOrderData, null, 2));
 
         const createRes = await wcApi.post('orders', newOrderData);
         wcOrder = createRes.data;
