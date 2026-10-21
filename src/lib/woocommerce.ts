@@ -31,10 +31,21 @@ export async function getCategoryIdBySlug(slug: string): Promise<number | null> 
   if (!isServer || !hasCredentials) return null;
   try {
     const response = await wcApi.get("products/categories", {
-      slug: slug,
+      per_page: 100,
     });
     if (response.data && response.data.length > 0) {
-      return response.data[0].id;
+      const normSlug = slug.toLowerCase().trim();
+      const match = response.data.find((c: any) => {
+        const cSlug = (c.slug || "").toLowerCase();
+        const cName = (c.name || "").toLowerCase();
+        if (cSlug === normSlug || cName === normSlug) return true;
+        if (normSlug === "tees" && (cSlug.includes("tee") || cSlug.includes("t-shirt") || cName.includes("t-shirt"))) return true;
+        if (normSlug === "hoodies" && (cSlug.includes("hoodie") || cSlug.includes("sweatshirt") || cName.includes("hoodie"))) return true;
+        if (normSlug === "jackets" && (cSlug.includes("jacket") || cName.includes("jacket"))) return true;
+        if (normSlug === "accessories" && (cSlug.includes("accessor") || cSlug.includes("cap") || cSlug.includes("bag"))) return true;
+        return false;
+      });
+      if (match) return match.id;
     }
   } catch (error) {
     console.error(`Failed to get category ID for slug ${slug}:`, error);
@@ -98,6 +109,11 @@ export async function getLatestProducts(limit = 20): Promise<Product[]> {
         shortDescription: cleanDesc,
         averageRating: parseFloat(product.average_rating) || 5,
         reviewCount: product.rating_count || 0,
+        categories: product.categories?.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+        })) || [],
       };
     });
   } catch (error) {
@@ -109,7 +125,7 @@ export async function getLatestProducts(limit = 20): Promise<Product[]> {
 /**
  * General purpose product fetcher (maintains backward compatibility with components)
  */
-export async function getProducts(categorySlug?: string, limit = 6): Promise<Product[]> {
+export async function getProducts(categorySlug?: string, limit = 20): Promise<Product[]> {
   if (!isServer || !hasCredentials) {
     console.info("WooCommerce REST API credentials not configured. Falling back to high-fidelity mock data.");
     return MOCK_PRODUCTS.slice(0, limit);
@@ -155,6 +171,7 @@ export async function getProducts(categorySlug?: string, limit = 6): Promise<Pro
         regularPrice: product.regular_price ? `₹${product.regular_price}` : null,
         salePrice: product.sale_price ? `₹${product.sale_price}` : null,
         onSale: product.on_sale || false,
+        isNew: new Date(product.date_created).getTime() > Date.now() - 30 * 24 * 60 * 60 * 1000,
         image: {
           sourceUrl: imageSrc,
           altText: imageAlt,
@@ -162,6 +179,11 @@ export async function getProducts(categorySlug?: string, limit = 6): Promise<Pro
         shortDescription: cleanDesc,
         averageRating: parseFloat(product.average_rating) || 5,
         reviewCount: product.rating_count || 0,
+        categories: product.categories?.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+        })) || [],
       };
     });
   } catch (error) {
@@ -170,11 +192,26 @@ export async function getProducts(categorySlug?: string, limit = 6): Promise<Pro
   }
 }
 
+export interface ProductVariation {
+  id: number;
+  sku: string;
+  price: string;
+  numericPrice: number;
+  regularPrice?: string | null;
+  salePrice?: string | null;
+  onSale: boolean;
+  inStock: boolean;
+  stockQuantity?: number | null;
+  attributes: Array<{ name: string; option: string; slug?: string }>;
+  image?: { sourceUrl: string; altText: string } | null;
+}
+
 export interface DetailedProduct {
   id: string;
   databaseId?: number;
   name: string;
   slug: string;
+  type?: string;
   sku: string;
   price: string;
   numericPrice: number;
@@ -186,6 +223,7 @@ export interface DetailedProduct {
   stockQuantity?: number | null;
   images: Array<{ sourceUrl: string; altText: string }>;
   attributes: Array<{ name: string; options: string[] }>;
+  variations?: ProductVariation[];
   shortDescription: string;
   description: string;
   averageRating: number;
@@ -205,6 +243,7 @@ export async function getProductBySlugOrId(slugOrId: string): Promise<DetailedPr
       databaseId: p.databaseId || 1,
       name: p.name,
       slug: p.slug,
+      type: "simple",
       sku: `UB-${p.id.toUpperCase()}`,
       price: p.price.startsWith("₹") ? p.price : `₹${p.price}`,
       numericPrice: numPrice,
@@ -223,6 +262,7 @@ export async function getProductBySlugOrId(slugOrId: string): Promise<DetailedPr
         { name: "Size", options: ["S", "M", "L", "XL", "XXL"] },
         { name: "Color", options: ["OBSIDIAN BLACK", "NEON CYAN", "ACID MAGENTA"] },
       ],
+      variations: [],
       shortDescription: p.shortDescription || "Engineered with premium cyber-wear textiles for maximum durability and futuristic style.",
       description: "Full cyber-wear tech-fiber integration. Water-resistant microcoatings designed for modern metropolitan exploration. High-density embroidery, custom inner lining, reinforced seams.",
       averageRating: p.averageRating || 5,
@@ -299,11 +339,43 @@ export async function getProductBySlugOrId(slugOrId: string): Promise<DetailedPr
         options: attr.options,
       }));
 
-    if (!formattedAttributes.some((a) => a.name.toLowerCase().includes("size"))) {
-      formattedAttributes.push({ name: "Size", options: ["S", "M", "L", "XL", "XXL"] });
+    let variations: ProductVariation[] = [];
+    if (wcProduct.type === "variable" || (Array.isArray(wcProduct.variations) && wcProduct.variations.length > 0)) {
+      try {
+        const varResponse = await wcApi.get(`products/${wcProduct.id}/variations`, {
+          per_page: 100,
+        });
+        if (varResponse && varResponse.data && Array.isArray(varResponse.data)) {
+          variations = varResponse.data.map((v: any) => ({
+            id: v.id,
+            sku: v.sku || "",
+            price: v.price ? `₹${v.price}` : (wcProduct.price ? `₹${wcProduct.price}` : "₹0"),
+            numericPrice: parseFloat(v.price) || (parseFloat(wcProduct.price) || 0),
+            regularPrice: v.regular_price ? `₹${v.regular_price}` : null,
+            salePrice: v.sale_price ? `₹${v.sale_price}` : null,
+            onSale: v.on_sale || false,
+            inStock: v.stock_status !== "outofstock",
+            stockQuantity: v.stock_quantity ?? null,
+            attributes: (v.attributes || []).map((attr: any) => ({
+              name: attr.name,
+              option: attr.option,
+              slug: attr.slug || attr.name?.toLowerCase(),
+            })),
+            image: v.image?.src
+              ? { sourceUrl: v.image.src, altText: v.image.alt || v.name || "" }
+              : null,
+          }));
+        }
+      } catch (err) {
+        console.error(`Failed to fetch variations for product ${wcProduct.id}:`, err);
+      }
     }
-    if (!formattedAttributes.some((a) => a.name.toLowerCase().includes("color"))) {
-      formattedAttributes.push({ name: "Color", options: ["OBSIDIAN BLACK", "NEON CYAN", "ACID MAGENTA"] });
+
+    if (formattedAttributes.length === 0) {
+      formattedAttributes.push(
+        { name: "Size", options: ["S", "M", "L", "XL", "XXL"] },
+        { name: "Color", options: ["OBSIDIAN BLACK", "NEON CYAN", "ACID MAGENTA"] }
+      );
     }
 
     const numPrice = parseFloat(wcProduct.price) || 99;
@@ -316,6 +388,7 @@ export async function getProductBySlugOrId(slugOrId: string): Promise<DetailedPr
       databaseId: wcProduct.id,
       name: wcProduct.name,
       slug: wcProduct.slug,
+      type: wcProduct.type,
       sku: wcProduct.sku || `UB-${wcProduct.id}`,
       price: formattedPrice,
       numericPrice: numPrice,
@@ -327,6 +400,7 @@ export async function getProductBySlugOrId(slugOrId: string): Promise<DetailedPr
       stockQuantity: wcProduct.stock_quantity ?? null,
       images: formattedImages,
       attributes: formattedAttributes,
+      variations,
       shortDescription: cleanShortDesc,
       description: cleanDesc,
       averageRating: parseFloat(wcProduct.average_rating) || 5,

@@ -209,28 +209,101 @@ export async function POST(request: Request) {
     // If order was not updated, create a new WooCommerce order
     if (!wcOrder) {
       try {
-        // Strictly format line_items to ensure WooCommerce product reference (product_id or SKU) is never empty/undefined
-        const lineItems = (cart_items || []).map((item: any) => {
-          const numericId = Number(item.databaseId || item.id);
-          const hasValidNumericId = Number.isInteger(numericId) && numericId > 0;
+        // Format line_items to ensure WooCommerce product reference includes both product_id and variation_id (if applicable)
+        const lineItems = await Promise.all(
+          (cart_items || []).map(async (item: any) => {
+            const numericProductId = Number(item.databaseId || item.productId || item.product_id || item.id);
+            const hasValidProductId = Number.isInteger(numericProductId) && numericProductId > 0;
 
-          if (hasValidNumericId) {
+            let variationId = Number(item.variation_id || item.variationId) || 0;
+            let sku = item.sku;
+
+            // If we have a valid product_id but no variation_id, check if it's a variable product in WooCommerce
+            if (hasValidProductId && (!variationId || variationId <= 0)) {
+              try {
+                const prodRes = await wcApi.get(`products/${numericProductId}`);
+                const wcProd = prodRes?.data;
+                if (
+                  wcProd &&
+                  (wcProd.type === 'variable' ||
+                    (Array.isArray(wcProd.variations) && wcProd.variations.length > 0))
+                ) {
+                  const varRes = await wcApi.get(`products/${numericProductId}/variations`, {
+                    per_page: 100,
+                  });
+                  const variations = varRes?.data || [];
+                  if (variations.length > 0) {
+                    const itemSize = (item.size || '').toLowerCase().trim();
+                    const itemColor = (item.color || '').toLowerCase().trim();
+
+                    const match = variations.find((v: any) => {
+                      return (v.attributes || []).every((attr: any) => {
+                        const attrName = (attr.name || '').toLowerCase();
+                        const attrOpt = (attr.option || '').toLowerCase().trim();
+                        if (!attrOpt) return true;
+                        if (attrName.includes('size')) {
+                          return itemSize && attrOpt === itemSize;
+                        }
+                        if (attrName.includes('color') || attrName.includes('colour')) {
+                          return itemColor && attrOpt === itemColor;
+                        }
+                        return true;
+                      });
+                    });
+
+                    if (match) {
+                      variationId = match.id;
+                      sku = match.sku || sku;
+                    } else {
+                      // Fallback to first available variation so variation_id and SKU are never omitted
+                      variationId = variations[0].id;
+                      sku = variations[0].sku || sku;
+                    }
+                  }
+                }
+              } catch (lookupErr: any) {
+                console.error(
+                  `Error resolving variation for product ${numericProductId}:`,
+                  lookupErr?.message || lookupErr
+                );
+              }
+            }
+
+            const quantity = Number(item.quantity) || 1;
+
+            if (hasValidProductId) {
+              const lineItemObj: any = {
+                product_id: numericProductId,
+                quantity,
+              };
+
+              // Ensure variation_id is passed for variable products
+              if (variationId && variationId > 0) {
+                lineItemObj.variation_id = variationId;
+              }
+
+              if (item.price !== undefined && item.price !== null) {
+                lineItemObj.price = String(item.price);
+              }
+
+              if (sku) {
+                lineItemObj.sku = sku;
+              }
+
+              return lineItemObj;
+            }
+
+            // Fallback to SKU for non-numeric product IDs (e.g. mock items like 'prod_1')
             return {
-              product_id: numericId,
+              sku: String(sku || item.id || 'UB-STREETWEAR'),
               name: item.name || 'Streetwear Item',
-              quantity: Number(item.quantity) || 1,
-              price: String(item.price),
+              quantity,
+              price: String(item.price || 0),
             };
-          }
+          })
+        );
 
-          // Fallback to SKU for non-numeric product IDs (e.g. mock items like 'prod_1')
-          return {
-            sku: String(item.sku || item.id || 'UB-STREETWEAR'),
-            name: item.name || 'Streetwear Item',
-            quantity: Number(item.quantity) || 1,
-            price: String(item.price),
-          };
-        });
+        console.log('Submitting WooCommerce order line_items payload:', JSON.stringify(lineItems, null, 2));
 
         const newOrderData: any = {
           payment_method: 'razorpay',

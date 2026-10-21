@@ -34,8 +34,11 @@ export function ProductCard({ product }: { product?: any } = {}) {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
+    const parentId = Number(product?.databaseId || product?.id) || product?.id || 'prod_1';
     const itemToAdd = {
-      id: product?.id || 'prod_1',
+      id: `${parentId}_${selectedSize}_${selectedColor}`,
+      productId: parentId,
+      product_id: parentId,
       name: title,
       price: product?.price
         ? typeof product.price === 'string'
@@ -52,8 +55,11 @@ export function ProductCard({ product }: { product?: any } = {}) {
 
   const handleBuyNow = (e: React.MouseEvent) => {
     e.preventDefault();
+    const parentId = Number(product?.databaseId || product?.id) || product?.id || 'prod_1';
     const itemToAdd = {
-      id: product?.id || 'prod_1',
+      id: `${parentId}_${selectedSize}_${selectedColor}`,
+      productId: parentId,
+      product_id: parentId,
       name: title,
       price: product?.price
         ? typeof product.price === 'string'

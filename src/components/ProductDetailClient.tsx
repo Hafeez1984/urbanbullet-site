@@ -21,20 +21,81 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   // Extract size & color attributes with sensible defaults
   const sizeAttribute = product.attributes.find((a) => a.name.toLowerCase().includes('size'));
-  const sizes = sizeAttribute?.options && sizeAttribute.options.length > 0
-    ? sizeAttribute.options
-    : ['S', 'M', 'L', 'XL', 'XXL'];
+  let sizes = sizeAttribute?.options && sizeAttribute.options.length > 0 ? sizeAttribute.options : [];
 
   const colorAttribute = product.attributes.find((a) => a.name.toLowerCase().includes('color'));
-  const colors = colorAttribute?.options && colorAttribute.options.length > 0
-    ? colorAttribute.options
-    : ['OBSIDIAN BLACK', 'NEON CYAN', 'ACID MAGENTA'];
+  let colors = colorAttribute?.options && colorAttribute.options.length > 0 ? colorAttribute.options : [];
 
-  const [selectedSize, setSelectedSize] = useState<string>(sizes[0] || 'M');
-  const [selectedColor, setSelectedColor] = useState<string>(colors[0] || 'OBSIDIAN BLACK');
+  // If attributes were not on parent product but exist in variations, extract options
+  if (product.variations && product.variations.length > 0) {
+    if (sizes.length === 0) {
+      const extractedSizes = Array.from(
+        new Set(
+          product.variations.flatMap((v) =>
+            (v.attributes || [])
+              .filter((attr) => attr.name.toLowerCase().includes('size') && attr.option)
+              .map((attr) => attr.option)
+          )
+        )
+      );
+      if (extractedSizes.length > 0) sizes = extractedSizes;
+    }
+    if (colors.length === 0) {
+      const extractedColors = Array.from(
+        new Set(
+          product.variations.flatMap((v) =>
+            (v.attributes || [])
+              .filter((attr) => (attr.name.toLowerCase().includes('color') || attr.name.toLowerCase().includes('colour')) && attr.option)
+              .map((attr) => attr.option)
+          )
+        )
+      );
+      if (extractedColors.length > 0) colors = extractedColors;
+    }
+  }
+
+  // Fallback only if mock product with no attributes and no variations
+  if (sizes.length === 0 && (!product.variations || product.variations.length === 0) && product.attributes.length === 0) {
+    sizes = ['S', 'M', 'L', 'XL', 'XXL'];
+  }
+  if (colors.length === 0 && (!product.variations || product.variations.length === 0) && product.attributes.length === 0) {
+    colors = ['OBSIDIAN BLACK', 'NEON CYAN', 'ACID MAGENTA'];
+  }
+
+  const [selectedSize, setSelectedSize] = useState<string>(sizes[0] || '');
+  const [selectedColor, setSelectedColor] = useState<string>(colors[0] || '');
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
   const [openAccordion, setOpenAccordion] = useState<'specs' | 'fabric' | 'delivery' | null>('specs');
   const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
+
+  // Find matching variation based on selected size & color
+  const selectedVariation = React.useMemo(() => {
+    if (!product.variations || product.variations.length === 0) return null;
+
+    const matched = product.variations.find((v) => {
+      return (v.attributes || []).every((attr) => {
+        const attrName = (attr.name || '').toLowerCase();
+        const attrOpt = (attr.option || '').toLowerCase().trim();
+        if (!attrOpt) return true; // Empty option in WooCommerce variation matches any
+
+        if (attrName.includes('size')) {
+          return selectedSize && attrOpt === selectedSize.toLowerCase().trim();
+        }
+        if (attrName.includes('color') || attrName.includes('colour')) {
+          return selectedColor && attrOpt === selectedColor.toLowerCase().trim();
+        }
+        return true;
+      });
+    });
+
+    return matched || product.variations[0];
+  }, [product.variations, selectedSize, selectedColor]);
+
+  const displayPrice = selectedVariation?.price || product.price;
+  const displayRegularPrice = selectedVariation?.regularPrice || product.regularPrice;
+  const displayNumericPrice = selectedVariation?.numericPrice ?? product.numericPrice;
+  const displaySku = selectedVariation?.sku || product.sku;
+  const isInStock = selectedVariation ? selectedVariation.inStock : product.inStock;
 
   // Mobile Touch Swipe Handling
   const touchStartX = useRef<number | null>(null);
@@ -64,24 +125,39 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     touchEndX.current = null;
   };
 
-  const currentImage = product.images[selectedImageIndex] || product.images[0] || {
-    sourceUrl: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=800&q=80',
-    altText: product.name,
-  };
+  const currentImage = selectedVariation?.image?.sourceUrl
+    ? { sourceUrl: selectedVariation.image.sourceUrl, altText: selectedVariation.image.altText || product.name }
+    : product.images[selectedImageIndex] || product.images[0] || {
+        sourceUrl: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=800&q=80',
+        altText: product.name,
+      };
 
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    const parentId = Number(product.databaseId || product.id) || product.id;
+    const varId = selectedVariation ? Number(selectedVariation.id) : undefined;
+    const cartItemId = varId
+      ? `${parentId}_${varId}`
+      : `${parentId}_${selectedSize || 'default'}_${selectedColor || 'default'}`;
+
     const itemToAdd = {
-      id: product.id,
+      id: cartItemId,
+      productId: parentId,
+      product_id: parentId,
+      variationId: varId,
+      variation_id: varId,
+      sku: selectedVariation?.sku || product.sku,
       name: product.name,
-      price: product.numericPrice || parseFloat(product.price.replace(/[^0-9.]/g, '')) || 99,
-      size: selectedSize,
-      color: selectedColor,
-      image: currentImage.sourceUrl,
+      price: displayNumericPrice,
+      size: selectedSize || undefined,
+      color: selectedColor || undefined,
+      image: selectedVariation?.image?.sourceUrl || currentImage.sourceUrl,
     };
 
     addToCart(itemToAdd);
-    showNotification(`${product.name} (Size: ${selectedSize}, Color: ${selectedColor}) added to cart!`);
+    showNotification(
+      `${product.name}${selectedSize ? ` (Size: ${selectedSize})` : ''}${selectedColor ? ` (Color: ${selectedColor})` : ''} added to cart!`
+    );
 
     // Create ripple effect inside button
     const button = e.currentTarget;
@@ -98,13 +174,24 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   const handleBuyNow = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    const parentId = Number(product.databaseId || product.id) || product.id;
+    const varId = selectedVariation ? Number(selectedVariation.id) : undefined;
+    const cartItemId = varId
+      ? `${parentId}_${varId}`
+      : `${parentId}_${selectedSize || 'default'}_${selectedColor || 'default'}`;
+
     const itemToAdd = {
-      id: product.id,
+      id: cartItemId,
+      productId: parentId,
+      product_id: parentId,
+      variationId: varId,
+      variation_id: varId,
+      sku: selectedVariation?.sku || product.sku,
       name: product.name,
-      price: product.numericPrice || parseFloat(product.price.replace(/[^0-9.]/g, '')) || 99,
-      size: selectedSize,
-      color: selectedColor,
-      image: currentImage.sourceUrl,
+      price: displayNumericPrice,
+      size: selectedSize || undefined,
+      color: selectedColor || undefined,
+      image: selectedVariation?.image?.sourceUrl || currentImage.sourceUrl,
     };
 
     addToCart(itemToAdd);
@@ -183,7 +270,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 </div>
 
                 <div className="absolute top-4 right-4 z-10 font-mono text-[10px] text-cyan-400 bg-black/80 px-2.5 py-1 rounded border border-cyan-500/30 backdrop-blur-md">
-                  SYS.REF // {product.sku}
+                  SYS.REF // {displaySku}
                 </div>
 
                 {/* Mobile Touch Swipe Guidance */}
@@ -248,21 +335,28 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                     <span className="text-xs font-mono text-zinc-400 ml-1">({product.reviewCount})</span>
                   </div>
 
-                  <span className="text-xs font-mono font-semibold text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-2.5 py-1 rounded-md flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    IN STOCK [READY TO SHIP]
-                  </span>
+                  {isInStock ? (
+                    <span className="text-xs font-mono font-semibold text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      IN STOCK [READY TO SHIP]
+                    </span>
+                  ) : (
+                    <span className="text-xs font-mono font-semibold text-rose-400 bg-rose-950/50 border border-rose-500/30 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                      OUT OF STOCK
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* Price Display */}
               <div className="p-4 rounded-xl bg-[#111115] border border-zinc-800/80 flex items-baseline gap-4 shadow-inner">
                 <span className="text-3xl sm:text-4xl font-black text-cyan-400 orbitron">
-                  {product.price}
+                  {displayPrice}
                 </span>
-                {product.onSale && product.regularPrice && (
+                {product.onSale && displayRegularPrice && (
                   <span className="text-zinc-500 line-through text-lg font-mono">
-                    {product.regularPrice}
+                    {displayRegularPrice}
                   </span>
                 )}
                 {product.onSale && (
@@ -476,7 +570,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0a0a0a]/95 backdrop-blur-md border-t border-zinc-800 p-3 px-4 flex items-center justify-between shadow-[0_-10px_25px_rgba(0,0,0,0.8)]">
         <div className="flex flex-col">
           <span className="text-[10px] font-mono text-zinc-400 uppercase">PRICE ({selectedSize}):</span>
-          <span className="text-xl font-black text-cyan-400 orbitron">{product.price}</span>
+          <span className="text-xl font-black text-cyan-400 orbitron">{displayPrice}</span>
         </div>
 
         <div className="flex items-center gap-2">

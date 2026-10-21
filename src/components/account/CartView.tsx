@@ -201,7 +201,8 @@ export default function CartView({ icons }: CartViewProps) {
                             {item.name}
                           </strong>
                           <span className="text-sm text-gray-400 mt-1">
-                            Color: {item.color || 'Black'} | Size: {item.size || 'M'}
+                            {[item.color && `Color: ${item.color}`, item.size && `Size: ${item.size}`].filter(Boolean).join(' | ') || 'Standard'}
+                            {item.sku ? ` (${item.sku})` : ''}
                           </span>
                         </div>
                       </div>

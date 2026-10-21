@@ -15,6 +15,7 @@ export interface Product {
   shortDescription: string;
   averageRating: number;
   reviewCount: number;
+  categories?: Array<{ id: number; name: string; slug: string }>;
 }
 
 export const MOCK_PRODUCTS: Product[] = [

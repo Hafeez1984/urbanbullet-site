@@ -4,6 +4,11 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export interface CartItem {
   id: string;
+  productId?: number | string;
+  product_id?: number | string;
+  variationId?: number | string;
+  variation_id?: number | string;
+  sku?: string;
   name: string;
   price: number;
   quantity: number;
@@ -57,23 +62,39 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addToCart = (product?: any) => {
     if (product) {
       setCartItems((prev) => {
-        const existing = prev.find((item) => item.id === product.id);
+        const parentId = product.productId || product.product_id || product.id || 'prod_1';
+        const varId = product.variationId || product.variation_id;
+        const itemId = product.id
+          ? String(product.id)
+          : (varId
+              ? `${parentId}_${varId}`
+              : `${parentId}_${product.size || 'M'}_${product.color || 'default'}`);
+
+        const existing = prev.find((item) => item.id === itemId);
         if (existing) {
           return prev.map((item) =>
-            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+            item.id === itemId ? { ...item, quantity: item.quantity + (product.quantity || 1) } : item
           );
         }
         const numericPrice = typeof product.price === 'string'
           ? parseFloat(product.price.replace(/[^0-9.]/g, '')) || 0
-          : product.price;
+          : (typeof product.price === 'number' ? product.price : 0);
+
+        const numericProductId = Number(parentId) || undefined;
+        const numericVarId = Number(varId) || undefined;
 
         return [
           ...prev,
           {
-            id: product.id,
+            id: itemId,
+            productId: numericProductId || parentId,
+            product_id: numericProductId || parentId,
+            variationId: numericVarId,
+            variation_id: numericVarId,
+            sku: product.sku || undefined,
             name: product.name,
             price: numericPrice,
-            quantity: 1,
+            quantity: Number(product.quantity) || 1,
             size: product.size || 'M',
             color: product.color || 'Black',
             image: product.image?.sourceUrl || (typeof product.image === 'string' ? product.image : ''),
